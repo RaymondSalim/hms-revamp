@@ -1,14 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-
-// Mock dependencies of guest-action module so we can import the pure function
-vi.mock("@/app/_lib/prisma", () => ({
-  prisma: {},
-}));
-vi.mock("next/cache", () => ({
-  revalidatePath: vi.fn(),
-}));
-
-import { splitGuestStayByMonth } from "@/app/(internal)/(dashboard_layout)/residents/guests/guest-action";
+import { describe, it, expect } from "vitest";
+import { splitGuestStayByMonth } from "@/app/_lib/util/guest-billing";
 
 describe("splitGuestStayByMonth", () => {
   it("stay within single month (Jan 5 to Jan 20, fee=50000): 16 days x 50000", () => {

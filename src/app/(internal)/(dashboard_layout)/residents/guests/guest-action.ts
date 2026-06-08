@@ -5,28 +5,7 @@ import { revalidatePath } from "next/cache";
 import { lastDayOfMonth } from "date-fns";
 import { guestSchema, guestStaySchema } from "@/app/_lib/zod/guest/zod";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
-
-export function splitGuestStayByMonth(startDate: Date, endDate: Date, dailyFee: number) {
-  const segments: Array<{ month: number; year: number; days: number; amount: number }> = [];
-  let current = new Date(startDate);
-
-  while (current <= endDate) {
-    const monthEnd = lastDayOfMonth(current);
-    const segmentEnd = monthEnd < endDate ? monthEnd : endDate;
-
-    // Days = (segmentEnd - current) / ms_per_day + 1
-    const days = Math.round((segmentEnd.getTime() - current.getTime()) / 86400000) + 1;
-    const amount = days * dailyFee;
-
-    segments.push({ month: current.getMonth(), year: current.getFullYear(), days, amount });
-
-    // Move to first day of next month
-    current = new Date(segmentEnd);
-    current.setDate(current.getDate() + 1);
-  }
-
-  return segments;
-}
+import { splitGuestStayByMonth } from "@/app/_lib/util/guest-billing";
 
 export async function upsertGuestAction(data: { id?: number; name: string; email?: string; phone?: string; booking_id: number }) {
   const parsed = guestSchema.safeParse(data);
