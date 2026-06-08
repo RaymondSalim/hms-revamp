@@ -12,6 +12,8 @@
     "prisma-seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
     "db:push": "prisma db push",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit/",
+    "test:integration": "vitest run tests/integration/",
     "test:watch": "vitest",
     "test:ci": "vitest run --reporter=verbose"
   },

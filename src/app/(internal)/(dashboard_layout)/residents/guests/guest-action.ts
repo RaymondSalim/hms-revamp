@@ -6,7 +6,7 @@ import { lastDayOfMonth } from "date-fns";
 import { guestSchema, guestStaySchema } from "@/app/_lib/zod/guest/zod";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 
-function splitGuestStayByMonth(startDate: Date, endDate: Date, dailyFee: number) {
+export function splitGuestStayByMonth(startDate: Date, endDate: Date, dailyFee: number) {
   const segments: Array<{ month: number; year: number; days: number; amount: number }> = [];
   let current = new Date(startDate);
 

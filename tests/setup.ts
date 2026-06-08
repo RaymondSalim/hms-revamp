@@ -1,15 +1,18 @@
 import { execSync } from "child_process";
-import { beforeAll, afterAll } from "vitest";
+import { beforeAll } from "vitest";
 
 // Use test database
 process.env.DATABASE_URL = "postgresql://test:test@localhost:5433/hms_test";
-// Suppress Next.js server action warnings in test
-process.env.NODE_ENV = "test";
+(process.env as Record<string, string>).NODE_ENV = "test";
 
 beforeAll(async () => {
-  // Push schema to test DB (fast, no migrations needed)
-  execSync("npx prisma db push --skip-generate --accept-data-loss", {
-    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
-    stdio: "pipe",
-  });
+  // Only push schema if running integration tests (DB available)
+  try {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
+      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
+      stdio: "pipe",
+    });
+  } catch {
+    // DB not available — unit tests will still run fine
+  }
 });

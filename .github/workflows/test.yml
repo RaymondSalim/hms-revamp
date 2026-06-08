@@ -19,7 +19,21 @@ jobs:
       - run: npx prisma generate
       - run: npx tsc --noEmit
 
-  test:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx prisma generate
+      - run: npx vitest run tests/unit/
+        env:
+          NODE_ENV: test
+
+  integration-tests:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -47,7 +61,7 @@ jobs:
       - run: npx prisma db push --skip-generate --accept-data-loss
         env:
           DATABASE_URL: postgresql://test:test@localhost:5433/hms_test
-      - run: npx vitest run
+      - run: npx vitest run tests/integration/
         env:
           DATABASE_URL: postgresql://test:test@localhost:5433/hms_test
           NODE_ENV: test
