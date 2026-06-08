@@ -69,7 +69,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
   const columns: ColumnDef<Deposit, unknown>[] = [
     {
       accessorKey: "booking",
-      header: "Booking",
+      header: "Pemesanan",
       cell: ({ row }) => {
         const deposit = row.original;
         const room = deposit.booking.rooms?.room_number ?? "-";
@@ -94,7 +94,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
     },
     {
       accessorKey: "amount",
-      header: "Amount",
+      header: "Jumlah",
       cell: ({ row }) => formatCurrency(row.original.amount),
     },
     {
@@ -104,7 +104,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
     },
     {
       accessorKey: "refunded_amount",
-      header: "Refunded Amount",
+      header: "Jumlah Refund",
       cell: ({ row }) =>
         row.original.refunded_amount
           ? formatCurrency(row.original.refunded_amount)
@@ -112,7 +112,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
     },
     {
       accessorKey: "applied_at",
-      header: "Applied At",
+      header: "Diterapkan",
       cell: ({ row }) =>
         row.original.applied_at
           ? new Date(row.original.applied_at).toLocaleDateString("id-ID")
@@ -120,7 +120,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "Aksi",
       cell: ({ row }) => {
         const deposit = row.original;
         return (
@@ -134,7 +134,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
                 }}
                 onClick={() => setStatusModalDeposit(deposit)}
               >
-                Update Status
+                Ubah Status
               </button>
             )}
             {(deposit.status === "UNPAID" || deposit.status === "HELD") && (
@@ -146,7 +146,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
                 }}
                 onClick={() => setAmountModalDeposit(deposit)}
               >
-                Edit Amount
+                Edit Jumlah
               </button>
             )}
           </div>
@@ -162,7 +162,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
           className="text-2xl font-bold"
           style={{ color: "var(--color-text-primary)" }}
         >
-          Deposits
+          Deposit
         </h1>
       </div>
 
@@ -210,7 +210,7 @@ function StatusUpdateModal({
 
   const handleSubmit = () => {
     if (!selectedStatus) {
-      setError("Please select a status");
+      setError("Pilih status terlebih dahulu");
       return;
     }
 
@@ -223,7 +223,7 @@ function StatusUpdateModal({
       if (result.success) {
         onClose();
       } else {
-        setError(result.error ?? "An error occurred");
+        setError(result.error ?? "Terjadi kesalahan");
       }
     });
   };
@@ -244,12 +244,12 @@ function StatusUpdateModal({
           className="text-lg font-semibold"
           style={{ color: "var(--color-text-primary)" }}
         >
-          Update Deposit Status
+          Ubah Status Deposit
         </h2>
 
         <div className="space-y-1">
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Current Status
+            Status Saat Ini
           </p>
           <StatusBadge status={deposit.status} />
         </div>
@@ -259,7 +259,7 @@ function StatusUpdateModal({
             className="block text-sm font-medium"
             style={{ color: "var(--color-text-primary)" }}
           >
-            New Status
+            Status Baru
           </label>
           <select
             value={selectedStatus}
@@ -280,7 +280,7 @@ function StatusUpdateModal({
               color: "var(--color-text-primary)",
             }}
           >
-            <option value="">Select status...</option>
+            <option value="">Pilih status...</option>
             {allowedTransitions.map((s) => (
               <option key={s} value={s}>
                 {STATUS_BADGE_STYLES[s].label}
@@ -296,7 +296,7 @@ function StatusUpdateModal({
               className="block text-sm font-medium"
               style={{ color: "var(--color-text-primary)" }}
             >
-              Refunded Amount
+              Jumlah Refund
             </label>
             <input
               type="number"
@@ -309,14 +309,14 @@ function StatusUpdateModal({
                 backgroundColor: "var(--color-bg-card)",
                 color: "var(--color-text-primary)",
               }}
-              placeholder="Enter refunded amount"
+              placeholder="Masukkan jumlah refund"
             />
             {selectedStatus === "REFUNDED" && (
               <p
                 className="text-xs"
                 style={{ color: "var(--color-text-secondary)" }}
               >
-                Full refund amount is auto-filled
+                Jumlah refund penuh otomatis terisi
               </p>
             )}
           </div>
@@ -326,8 +326,8 @@ function StatusUpdateModal({
           className="rounded-lg p-3 text-sm"
           style={{ backgroundColor: "#fffbeb", color: "#92400e" }}
         >
-          <strong>Warning:</strong> Changing the deposit status may affect
-          payment allocation and financial records. This action cannot be undone.
+          <strong>Peringatan:</strong> Mengubah status deposit dapat memengaruhi
+          alokasi pembayaran dan catatan keuangan. Tindakan ini tidak dapat dibatalkan.
         </div>
 
         {error && (
@@ -345,7 +345,7 @@ function StatusUpdateModal({
               color: "var(--color-text-primary)",
             }}
           >
-            Cancel
+            Batal
           </button>
           <button
             onClick={handleSubmit}
@@ -356,7 +356,7 @@ function StatusUpdateModal({
               color: "white",
             }}
           >
-            {isPending ? "Updating..." : "Confirm"}
+            {isPending ? "Memperbarui..." : "Konfirmasi"}
           </button>
         </div>
       </div>
@@ -378,7 +378,7 @@ function AmountEditModal({
   const handleSubmit = () => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      setError("Amount must be a positive number");
+      setError("Jumlah harus berupa angka positif");
       return;
     }
 
@@ -387,7 +387,7 @@ function AmountEditModal({
       if (result.success) {
         onClose();
       } else {
-        setError(result.error ?? "An error occurred");
+        setError(result.error ?? "Terjadi kesalahan");
       }
     });
   };
@@ -408,7 +408,7 @@ function AmountEditModal({
           className="text-lg font-semibold"
           style={{ color: "var(--color-text-primary)" }}
         >
-          Edit Deposit Amount
+          Edit Jumlah Deposit
         </h2>
 
         <div className="space-y-2">
@@ -416,7 +416,7 @@ function AmountEditModal({
             className="block text-sm font-medium"
             style={{ color: "var(--color-text-primary)" }}
           >
-            Amount
+            Jumlah
           </label>
           <input
             type="number"
@@ -431,7 +431,7 @@ function AmountEditModal({
               backgroundColor: "var(--color-bg-card)",
               color: "var(--color-text-primary)",
             }}
-            placeholder="Enter deposit amount"
+            placeholder="Masukkan jumlah deposit"
           />
         </div>
 
@@ -450,7 +450,7 @@ function AmountEditModal({
               color: "var(--color-text-primary)",
             }}
           >
-            Cancel
+            Batal
           </button>
           <button
             onClick={handleSubmit}
@@ -461,7 +461,7 @@ function AmountEditModal({
               color: "white",
             }}
           >
-            {isPending ? "Saving..." : "Save"}
+            {isPending ? "Menyimpan..." : "Simpan"}
           </button>
         </div>
       </div>

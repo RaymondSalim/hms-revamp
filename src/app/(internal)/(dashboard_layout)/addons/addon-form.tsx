@@ -192,7 +192,7 @@ export function AddonForm({ addon, locationId, existingAddons, onSubmit, onCance
       {/* Requires Input toggle */}
       <div className="flex items-center gap-3">
         <label className="text-sm font-medium" style={{ color: "var(--color-text-primary)" }}>
-          Requires Input
+          Perlu Input
         </label>
         <button
           type="button"
@@ -211,7 +211,7 @@ export function AddonForm({ addon, locationId, existingAddons, onSubmit, onCance
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium" style={{ color: "var(--color-text-primary)" }}>
-            Pricing Tiers <span className="text-red-500">*</span>
+            Tier Harga <span className="text-red-500">*</span>
           </label>
           <button
             type="button"
@@ -294,7 +294,7 @@ export function AddonForm({ addon, locationId, existingAddons, onSubmit, onCance
 
               <div className="flex items-center gap-2">
                 <label className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  Full Payment
+                  Bayar Penuh
                 </label>
                 <button
                   type="button"

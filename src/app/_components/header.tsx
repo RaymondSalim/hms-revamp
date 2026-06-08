@@ -21,6 +21,7 @@ const breadcrumbMap: Record<string, string> = {
   "/financials/export": "Ekspor",
   "/schedule/calendar": "Kalender",
   "/settings/users": "Pengguna",
+  "/locations": "Lokasi",
 };
 
 export function Header() {

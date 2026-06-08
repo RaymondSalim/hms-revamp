@@ -112,7 +112,7 @@ export function AddonTable({ addons, locationId }: Props) {
     },
     {
       id: "pricing",
-      header: "Pricing Tiers",
+      header: "Tier Harga",
       enableSorting: false,
       cell: ({ row }) => (
         <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
@@ -122,12 +122,12 @@ export function AddonTable({ addons, locationId }: Props) {
     },
     {
       id: "children",
-      header: "Has Children",
+      header: "Punya Sub-item",
       cell: ({ row }) => (row.original.children?.length > 0 ? "Ya" : "Tidak"),
     },
     {
       accessorKey: "requires_input",
-      header: "Requires Input",
+      header: "Perlu Input",
       cell: ({ getValue }) => (getValue() ? "Ya" : "Tidak"),
     },
     {
