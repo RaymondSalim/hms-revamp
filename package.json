@@ -17,6 +17,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1063.0",
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
     "@prisma/client": "^6.19.3",
     "@tanstack/react-table": "^8.21.3",
     "bcrypt": "^6.0.0",
