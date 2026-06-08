@@ -1,0 +1,574 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters", "omitApi"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Booking {
+  id                  Int      @id @default(autoincrement())
+  room_id             Int?
+  start_date          DateTime @db.Date
+  duration_id         Int?
+  status_id           Int?
+  fee                 Decimal  @db.Decimal(10, 2)
+  tenant_id           String?
+  end_date            DateTime? @db.Date
+  second_resident_fee Decimal? @db.Decimal(10, 2)
+  is_rolling          Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  addOns          BookingAddOn[]
+  bills           Bill[]
+  deposit         Deposit?
+  durations       Duration?       @relation(fields: [duration_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  rooms           Room?           @relation(fields: [room_id], references: [id], onUpdate: NoAction)
+  bookingstatuses BookingStatus?  @relation(fields: [status_id], references: [id], onUpdate: NoAction)
+  tenants         Tenant?         @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
+  checkInOutLogs  CheckInOutLog[]
+  guests          Guest[]
+  payments        Payment[]
+  penalties       Penalty[]
+
+  @@map("bookings")
+}
+
+model BookingStatus {
+  id     Int    @id @default(autoincrement())
+  status String @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  bookings Booking[]
+
+  @@map("bookingstatuses")
+}
+
+model CheckInOutLog {
+  id         Int      @id @default(autoincrement())
+  booking_id Int
+  event_type String   @db.VarChar(255)
+  event_date DateTime @db.Date
+  tenant_id  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  bookings Booking @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant   Tenant  @relation(fields: [tenant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@map("checkinoutlogs")
+}
+
+model Duration {
+  id       Int    @id @default(autoincrement())
+  duration String @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  month_count       Int
+  bookings          Booking[]
+  roomtypedurations RoomTypeDuration[]
+
+  @@map("durations")
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  amount      Decimal  @db.Decimal(12, 2)
+  description String   @db.VarChar(255)
+  date        DateTime @db.Date
+  category    String?  @db.VarChar(255)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now()) @updatedAt
+  location_id Int
+  type        TransactionType
+  related_id  Json?
+  locations   Location        @relation(fields: [location_id], references: [id], onUpdate: NoAction)
+
+  @@map("transactions")
+}
+
+model Guest {
+  id    Int     @id @default(autoincrement())
+  name  String  @db.VarChar(255)
+  email String? @db.VarChar(255)
+  phone String? @db.VarChar(255)
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @default(now()) @updatedAt
+  booking_id Int
+  GuestStay  GuestStay[]
+  booking    Booking     @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("guests")
+}
+
+model GuestStay {
+  id         Int      @id @default(autoincrement())
+  guest_id   Int
+  start_date DateTime @db.Date
+  end_date   DateTime @db.Date
+  daily_fee  Decimal  @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  guest     Guest    @relation(fields: [guest_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("guest_stays")
+}
+
+model Log {
+  id           Int       @id @default(autoincrement())
+  action       String    @db.VarChar(255)
+  timestamp    DateTime? @default(now()) @db.Timestamp(6)
+  site_user_id String
+  siteusers    SiteUser  @relation(fields: [site_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("logs")
+}
+
+model Bill {
+  id          Int      @id @default(autoincrement())
+  booking_id  Int
+  description String   @db.VarChar(255)
+  due_date    DateTime @db.Date
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
+  bill_item    BillItem[]
+  bookings     Booking       @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  paymentBills PaymentBill[]
+
+  @@map("bills")
+}
+
+model BillItem {
+  id                   Int     @id @default(autoincrement())
+  bill_id              Int
+  description          String  @db.VarChar(255)
+  amount               Decimal @db.Decimal(10, 2)
+  internal_description String? @db.VarChar(255)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  type       BillType @default(GENERATED)
+  related_id Json?
+  bill       Bill     @relation(fields: [bill_id], references: [id], onDelete: Cascade)
+
+  @@index([bill_id])
+  @@map("bill_items")
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  booking_id    Int
+  amount        Decimal  @db.Decimal(10, 2)
+  payment_date  DateTime @db.Date
+  payment_proof String?  @db.VarChar(255)
+  status_id     Int?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now()) @updatedAt
+  paymentBills    PaymentBill[]
+  bookings        Booking        @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  paymentstatuses PaymentStatus? @relation(fields: [status_id], references: [id], onUpdate: NoAction)
+
+  @@map("payments")
+}
+
+model PaymentBill {
+  payment_id Int
+  bill_id    Int
+  amount     Decimal @db.Decimal(10, 2)
+  id         Int     @id @default(autoincrement())
+  bill       Bill    @relation(fields: [bill_id], references: [id], onDelete: Cascade)
+  payment    Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+
+  @@map("payment_bills")
+}
+
+model PaymentStatus {
+  id     Int    @id @default(autoincrement())
+  status String @db.VarChar(255)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  payments  Payment[]
+
+  @@map("paymentstatuses")
+}
+
+model Permission {
+  id         Int    @id @default(autoincrement())
+  permission String @db.VarChar(255)
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
+  rolepermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model Report {
+  id           Int      @id @default(autoincrement())
+  type         String   @db.VarChar(255)
+  generated_at DateTime @db.Date
+  content      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("reports")
+}
+
+model RolePermission {
+  role_id       Int
+  permission_id Int
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @default(now()) @updatedAt
+  permissions Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([role_id, permission_id])
+  @@map("rolepermissions")
+}
+
+model Role {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(255)
+  description String? @db.VarChar(255)
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
+  rolepermissions RolePermission[]
+  siteusers       SiteUser[]
+
+  @@map("roles")
+}
+
+model Room {
+  id           Int    @id @default(autoincrement())
+  room_number  String @db.VarChar(255)
+  room_type_id Int?
+  status_id    Int?
+  location_id  Int?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
+  bookings     Booking[]
+  locations    Location?   @relation(fields: [location_id], references: [id], onUpdate: NoAction)
+  roomtypes    RoomType?   @relation(fields: [room_type_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  roomstatuses RoomStatus? @relation(fields: [status_id], references: [id], onUpdate: NoAction)
+
+  @@unique([room_number, location_id])
+  @@map("rooms")
+}
+
+model RoomStatus {
+  id     Int    @id @default(autoincrement())
+  status String @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  rooms     Room[]
+
+  @@map("roomstatuses")
+}
+
+model RoomTypeDuration {
+  id              Int      @id @default(autoincrement())
+  room_type_id    Int
+  duration_id     Int
+  suggested_price Decimal? @db.Decimal(12, 2)
+  location_id     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  durations Duration @relation(fields: [duration_id], references: [id], onUpdate: NoAction)
+  locations Location @relation(fields: [location_id], references: [id], onUpdate: NoAction)
+  roomtypes RoomType @relation(fields: [room_type_id], references: [id], onUpdate: NoAction)
+
+  @@unique([room_type_id, duration_id, location_id])
+  @@map("roomtypedurations")
+}
+
+model RoomType {
+  id          Int     @id @default(autoincrement())
+  type        String  @unique @db.VarChar(255)
+  description String?
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now()) @updatedAt
+  rooms             Room[]
+  roomtypedurations RoomTypeDuration[]
+
+  @@map("roomtypes")
+}
+
+model Rule {
+  id          Int    @id @default(autoincrement())
+  description String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("rules")
+}
+
+model Setting {
+  id            Int    @id @default(autoincrement())
+  setting_key   String @unique @db.VarChar(255)
+  setting_value String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("settings")
+}
+
+model SiteUser {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  image         String?
+  role_id       Int?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  shouldReset Boolean   @default(false)
+  accounts    Account[]
+  logs        Log[]
+  sessions    Session[]
+  roles       Role?     @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+
+  @@map("siteusers")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  siteUser  SiteUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  siteUser  SiteUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verificationtokens")
+}
+
+model Penalty {
+  id          Int     @id @default(autoincrement())
+  description String  @db.VarChar(255)
+  amount      Decimal @db.Decimal(10, 2)
+  booking_id  Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  bookings  Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("penalties")
+}
+
+model Location {
+  id      Int    @id @default(autoincrement())
+  name    String @db.VarChar(255)
+  address String @db.VarChar(255)
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @default(now()) @updatedAt
+  addOns           AddOn[]
+  rooms            Room[]
+  RoomTypeDuration RoomTypeDuration[]
+  transactions     Transaction[]
+
+  @@map("locations")
+}
+
+model Tenant {
+  id    String  @id @default(cuid())
+  name  String  @db.VarChar(255)
+  email String? @db.VarChar(255)
+  phone String? @db.VarChar(255)
+
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @default(now()) @updatedAt
+  current_address           String?
+  emergency_contact_name    String?         @db.VarChar(255)
+  emergency_contact_phone   String?         @db.VarChar(255)
+  id_file                   String?         @db.VarChar(512)
+  id_number                 String          @db.VarChar(255)
+  referral_source           String?
+  second_resident_id        String?         @unique
+  second_resident_relation  String?         @db.VarChar(255)
+  family_certificate_file   String?         @db.VarChar(512)
+  second_resident_email     String?         @db.VarChar(255)
+  second_resident_name      String?         @db.VarChar(255)
+  second_resident_phone     String?         @db.VarChar(255)
+  second_resident_id_file   String?         @db.VarChar(512)
+  second_resident_id_number String?         @db.VarChar(255)
+  bookings                  Booking[]
+  checkInOutLogs            CheckInOutLog[]
+  second_resident           Tenant?         @relation("TenantSecondResident", fields: [second_resident_id], references: [id])
+  second_resident_of        Tenant?         @relation("TenantSecondResident")
+
+  @@map("tenants")
+}
+
+model EmailLogs {
+  id      Int    @id @default(autoincrement())
+  status  String @db.VarChar(255)
+  payload String @db.VarChar(4096)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  from      String   @db.VarChar(255)
+  subject   String?  @db.VarChar(255)
+  to        String   @db.VarChar(255)
+
+  @@map("emaillogs")
+}
+
+model Event {
+  id              Int       @id @default(autoincrement())
+  title           String
+  description     String?
+  start           DateTime
+  end             DateTime?
+  allDay          Boolean   @default(false)
+  backgroundColor String?
+  borderColor     String?
+  textColor       String?
+  recurring       Boolean   @default(false)
+  extendedProps   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("events")
+}
+
+model AddOn {
+  id              String  @id @default(cuid())
+  name            String
+  description     String?
+  location_id     Int?
+  parent_addon_id String?
+  requires_input  Boolean @default(false)
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  location    Location?      @relation(fields: [location_id], references: [id], onUpdate: NoAction)
+  parentAddOn AddOn?         @relation("ParentAddOn", fields: [parent_addon_id], references: [id])
+  children    AddOn[]        @relation("ParentAddOn")
+  pricing     AddOnPricing[]
+  bookings    BookingAddOn[]
+
+  @@unique([name, location_id])
+}
+
+model AddOnPricing {
+  id              String  @id @default(cuid())
+  price           Float
+  addon_id        String
+  interval_end    Int?
+  interval_start  Int
+  is_full_payment Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  addOn     AddOn    @relation(fields: [addon_id], references: [id])
+}
+
+model BookingAddOn {
+  id         String   @id @default(cuid())
+  input      String?
+  addon_id   String
+  booking_id Int
+  end_date   DateTime? @db.Date
+  start_date DateTime @db.Date
+  is_rolling Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  addOn     AddOn    @relation(fields: [addon_id], references: [id])
+  booking   Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+}
+
+model Deposit {
+  id              Int           @id @default(autoincrement())
+  booking_id      Int
+  amount          Decimal       @db.Decimal(10, 2)
+  status          DepositStatus
+  refunded_at     DateTime?
+  applied_at      DateTime?
+  refunded_amount Decimal?      @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  booking Booking @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+
+  @@unique([booking_id])
+  @@map("deposits")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum BillType {
+  GENERATED
+  CREATED
+}
+
+enum DepositStatus {
+  UNPAID
+  HELD
+  APPLIED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  FORFEITED
+}
