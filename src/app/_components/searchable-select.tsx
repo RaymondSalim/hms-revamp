@@ -23,11 +23,15 @@ const customStyles: StylesConfig<SelectOption, false, GroupBase<SelectOption>> =
     borderColor: state.isFocused ? "var(--color-accent)" : "var(--color-border)",
     borderRadius: "0.5rem",
     fontSize: "0.875rem",
-    minHeight: "2.625rem",
+    minHeight: "42px",
     boxShadow: state.isFocused ? "0 0 0 1px var(--color-accent)" : "none",
     "&:hover": {
       borderColor: "var(--color-accent)",
     },
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "2px 12px",
   }),
   menu: (base) => ({
     ...base,
