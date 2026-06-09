@@ -9,7 +9,8 @@
     "lint": "eslint",
     "prisma-gen": "prisma generate",
     "prisma-migrate": "prisma migrate deploy",
-    "prisma-seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "prisma-seed": "tsx prisma/seed.ts",
+    "seed:mock": "tsx prisma/seed-mock.ts",
     "db:push": "prisma db push",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit/",
@@ -18,7 +19,7 @@
     "test:ci": "vitest run --reporter=verbose"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1063.0",
@@ -60,6 +61,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8"
