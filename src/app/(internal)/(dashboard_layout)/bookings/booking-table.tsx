@@ -11,6 +11,7 @@ import {
   checkInOutAction,
 } from "./booking-action";
 import { BookingForm } from "./booking-form";
+import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
 
 export interface BookingRow {
@@ -283,60 +284,18 @@ export function BookingTable({
       id: "actions",
       header: "Aksi",
       enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex gap-1 flex-wrap">
-          <button
-            onClick={() => openEdit(row.original)}
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{
-              backgroundColor: "var(--color-accent-light)",
-              color: "var(--color-accent)",
-            }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() =>
-              setCheckInOutModal({
-                booking: row.original,
-                type: "CHECK_IN",
-              })
-            }
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "#D1FAE5", color: "#059669" }}
-          >
-            In
-          </button>
-          <button
-            onClick={() =>
-              setCheckInOutModal({
-                booking: row.original,
-                type: "CHECK_OUT",
-              })
-            }
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "#FEF3C7", color: "#D97706" }}
-          >
-            Out
-          </button>
-          {row.original.is_rolling && !row.original.end_date && (
-            <button
-              onClick={() => setScheduleEndModal(row.original)}
-              className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-              style={{ backgroundColor: "#DBEAFE", color: "#2563EB" }}
-            >
-              Akhiri
-            </button>
-          )}
-          <button
-            onClick={() => setDeleteConfirm(row.original)}
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}
-          >
-            Hapus
-          </button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const items = [
+          { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
+          { label: "Check In", icon: Icons.checkIn, onClick: () => setCheckInOutModal({ booking: row.original, type: "CHECK_IN" }), variant: "success" as const },
+          { label: "Check Out", icon: Icons.checkOut, onClick: () => setCheckInOutModal({ booking: row.original, type: "CHECK_OUT" }), variant: "warning" as const },
+          ...(row.original.is_rolling && !row.original.end_date
+            ? [{ label: "Akhiri", icon: Icons.endBooking, onClick: () => setScheduleEndModal(row.original), variant: "info" as const }]
+            : []),
+          { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" as const },
+        ];
+        return <ActionMenu items={items} maxInline={2} />;
+      },
     },
   ];
 

@@ -8,6 +8,7 @@ import {
   updateDepositStatusAction,
   updateDepositAmountAction,
 } from "./deposit-action";
+import { ActionMenu, Icons } from "@/app/_components/action-menu";
 
 type DepositStatus =
   | "UNPAID"
@@ -123,34 +124,16 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
       header: "Aksi",
       cell: ({ row }) => {
         const deposit = row.original;
-        return (
-          <div className="flex gap-2">
-            {deposit.status === "HELD" && (
-              <button
-                className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-                style={{
-                  backgroundColor: "var(--color-accent)",
-                  color: "white",
-                }}
-                onClick={() => setStatusModalDeposit(deposit)}
-              >
-                Ubah Status
-              </button>
-            )}
-            {(deposit.status === "UNPAID" || deposit.status === "HELD") && (
-              <button
-                className="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-                style={{
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-text-primary)",
-                }}
-                onClick={() => setAmountModalDeposit(deposit)}
-              >
-                Edit Jumlah
-              </button>
-            )}
-          </div>
-        );
+        const items = [
+          ...(deposit.status === "HELD"
+            ? [{ label: "Ubah Status", icon: Icons.status, onClick: () => setStatusModalDeposit(deposit) }]
+            : []),
+          ...((deposit.status === "UNPAID" || deposit.status === "HELD")
+            ? [{ label: "Edit Jumlah", icon: Icons.money, onClick: () => setAmountModalDeposit(deposit), variant: "warning" as const }]
+            : []),
+        ];
+        if (items.length === 0) return null;
+        return <ActionMenu items={items} />;
       },
     },
   ];

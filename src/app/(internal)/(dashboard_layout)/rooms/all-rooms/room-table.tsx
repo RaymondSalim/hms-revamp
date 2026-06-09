@@ -6,6 +6,7 @@ import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
 import { upsertRoomAction, deleteRoomAction } from "./room-action";
 import { useLocation } from "@/app/_context/location-context";
+import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
 
 interface RoomRow {
@@ -103,22 +104,12 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
       header: "Aksi",
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => openEdit(row.original)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "var(--color-accent-light)", color: "var(--color-accent)" }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => setDeleteConfirm(row.original)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}
-          >
-            Hapus
-          </button>
-        </div>
+        <ActionMenu
+          items={[
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+          ]}
+        />
       ),
     },
   ];

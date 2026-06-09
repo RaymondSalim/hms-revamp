@@ -5,6 +5,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
 import { upsertSiteUserAction, deleteUserAction } from "./site_users-action";
+import { ActionMenu, Icons } from "@/app/_components/action-menu";
 
 interface SiteUser {
   id: string;
@@ -121,44 +122,12 @@ export function UserTable({ users }: { users: SiteUser[] }) {
       id: "actions",
       header: "Aksi",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => openEdit(row.original)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-150"
-            style={{
-              color: "var(--color-accent)",
-              backgroundColor: "var(--color-accent-light)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-accent)";
-              e.currentTarget.style.color = "white";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-accent-light)";
-              e.currentTarget.style.color = "var(--color-accent)";
-            }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => setDeleteConfirm(row.original)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-150"
-            style={{
-              color: "#DC2626",
-              backgroundColor: "#FEE2E2",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#DC2626";
-              e.currentTarget.style.color = "white";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#FEE2E2";
-              e.currentTarget.style.color = "#DC2626";
-            }}
-          >
-            Hapus
-          </button>
-        </div>
+        <ActionMenu
+          items={[
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+          ]}
+        />
       ),
     },
   ];

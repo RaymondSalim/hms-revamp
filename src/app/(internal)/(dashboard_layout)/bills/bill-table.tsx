@@ -12,6 +12,7 @@ import {
   updateBillItemAction,
   deleteBillItemAction,
 } from "./bill-action";
+import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
 
 // --- Types ---
@@ -316,48 +317,28 @@ export function BillTable({ bills }: Props) {
       header: "Aksi",
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="flex gap-1 flex-wrap">
-          <button
-            onClick={() => {
-              setExpandedBillId(
-                expandedBillId === row.original.id ? null : row.original.id
-              );
-            }}
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{
-              backgroundColor:
-                expandedBillId === row.original.id
-                  ? "var(--color-accent)"
-                  : "var(--color-accent-light)",
-              color:
-                expandedBillId === row.original.id
-                  ? "white"
-                  : "var(--color-accent)",
-            }}
-          >
-            {expandedBillId === row.original.id ? "Tutup" : "Detail"}
-          </button>
-          <button
-            onClick={() => {
-              setDueDateModal(row.original);
-              setDueDateValue(row.original.due_date.split("T")[0]);
-            }}
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "#FEF3C7", color: "#D97706" }}
-          >
-            Ubah Tanggal
-          </button>
-          <button
-            onClick={() => {
-              setAddItemModal(row.original);
-              resetItemForm();
-            }}
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "#D1FAE5", color: "#059669" }}
-          >
-            + Item
-          </button>
-        </div>
+        <ActionMenu
+          items={[
+            {
+              label: expandedBillId === row.original.id ? "Tutup" : "Detail",
+              icon: Icons.detail,
+              onClick: () => setExpandedBillId(expandedBillId === row.original.id ? null : row.original.id),
+            },
+            {
+              label: "Ubah Tanggal",
+              icon: Icons.calendar,
+              onClick: () => { setDueDateModal(row.original); setDueDateValue(row.original.due_date.split("T")[0]); },
+              variant: "warning",
+            },
+            {
+              label: "Tambah Item",
+              icon: Icons.addItem,
+              onClick: () => { setAddItemModal(row.original); resetItemForm(); },
+              variant: "success",
+            },
+          ]}
+          maxInline={2}
+        />
       ),
     },
   ];

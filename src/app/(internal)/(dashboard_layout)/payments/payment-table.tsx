@@ -8,6 +8,7 @@ import { FileUpload } from "@/app/_components/file-upload";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import { simulateUnpaidBillPaymentAction } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { upsertPaymentAction, deletePaymentAction } from "./payment-action";
+import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
 
 // --- Type Definitions ---
@@ -316,25 +317,12 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
       header: "Aksi",
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="flex gap-1">
-          <button
-            onClick={() => openEdit(row.original)}
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{
-              backgroundColor: "var(--color-accent-light)",
-              color: "var(--color-accent)",
-            }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => setDeleteConfirm(row.original)}
-            className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-            style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}
-          >
-            Hapus
-          </button>
-        </div>
+        <ActionMenu
+          items={[
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+          ]}
+        />
       ),
     },
   ];

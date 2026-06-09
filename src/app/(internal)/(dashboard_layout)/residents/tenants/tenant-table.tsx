@@ -6,6 +6,7 @@ import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
 import { TenantForm } from "./tenant-form";
 import { deleteTenantAction } from "./tenant-action";
+import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
 
 export interface TenantRow {
@@ -75,44 +76,12 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
       id: "actions",
       header: "Aksi",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleEdit(row.original)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-150"
-            style={{
-              color: "var(--color-accent)",
-              backgroundColor: "var(--color-accent-light)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-accent)";
-              e.currentTarget.style.color = "white";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-accent-light)";
-              e.currentTarget.style.color = "var(--color-accent)";
-            }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => handleDelete(row.original.id)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-150"
-            style={{
-              color: "#DC2626",
-              backgroundColor: "#FEF2F2",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#DC2626";
-              e.currentTarget.style.color = "white";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#FEF2F2";
-              e.currentTarget.style.color = "#DC2626";
-            }}
-          >
-            Hapus
-          </button>
-        </div>
+        <ActionMenu
+          items={[
+            { label: "Edit", icon: Icons.edit, onClick: () => handleEdit(row.original) },
+            { label: "Hapus", icon: Icons.delete, onClick: () => handleDelete(row.original.id), variant: "danger" },
+          ]}
+        />
       ),
     },
   ];
