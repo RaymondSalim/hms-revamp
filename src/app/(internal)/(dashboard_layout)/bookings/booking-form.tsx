@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { upsertBookingAction } from "./booking-action";
+import { SearchableSelect } from "@/app/_components/searchable-select";
 import { toast } from "react-toastify";
 import type { BookingRow } from "./booking-table";
 
@@ -67,7 +68,6 @@ export function BookingForm({
   onSuccess,
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const [tenantSearch, setTenantSearch] = useState("");
 
   // Form state
   const [roomId, setRoomId] = useState<number>(
@@ -115,12 +115,10 @@ export function BookingForm({
     return rtd?.suggested_price ? Number(rtd.suggested_price) : null;
   }, [selectedRoom, durationId, roomTypeDurations]);
 
-  // Filter tenants by search
-  const filteredTenants = useMemo(() => {
-    if (!tenantSearch) return tenants;
-    const lower = tenantSearch.toLowerCase();
-    return tenants.filter((t) => t.name.toLowerCase().includes(lower));
-  }, [tenants, tenantSearch]);
+  const tenantOptions = useMemo(
+    () => tenants.map((t) => ({ value: t.id, label: t.name })),
+    [tenants]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,29 +225,13 @@ export function BookingForm({
         <label className="block text-sm font-medium mb-1" style={labelStyle}>
           Penyewa <span className="text-red-500">*</span>
         </label>
-        <input
-          type="text"
-          placeholder="Cari penyewa..."
-          value={tenantSearch}
-          onChange={(e) => setTenantSearch(e.target.value)}
-          className="w-full px-3 py-2 text-sm rounded-lg border outline-none mb-1"
-          style={inputStyle}
-        />
-        <select
+        <SearchableSelect
+          options={tenantOptions}
           value={tenantId}
-          onChange={(e) => setTenantId(e.target.value)}
+          onChange={setTenantId}
+          placeholder="Cari penyewa..."
           required
-          className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
-          style={inputStyle}
-          size={Math.min(filteredTenants.length + 1, 5)}
-        >
-          <option value="">Pilih penyewa</option>
-          {filteredTenants.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {/* Room select */}
