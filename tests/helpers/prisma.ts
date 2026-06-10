@@ -83,26 +83,22 @@ export async function seedTestData() {
     create: { id: 2, room_number: "102", room_type_id: 1, status_id: 1, location_id: 1 },
   });
 
-  // Advance sequences past the explicit IDs we inserted
-  await testPrisma.$executeRawUnsafe(`
-    DO $$ DECLARE
-      r RECORD;
-    BEGIN
-      FOR r IN (
-        SELECT c.relname AS table_name, a.attname AS column_name
-        FROM pg_class c
-        JOIN pg_attribute a ON a.attrelid = c.oid
-        JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
-        WHERE c.relnamespace = 'public'::regnamespace
-          AND d.adbin::text LIKE '%nextval%'
-      ) LOOP
-        EXECUTE format(
-          'SELECT setval(pg_get_serial_sequence(%L, %L), COALESCE((SELECT MAX(%I) FROM %I), 0))',
-          r.table_name, r.column_name, r.column_name, r.table_name
-        );
-      END LOOP;
-    END $$;
-  `);
+  // Advance sequences past the explicit IDs we inserted so that
+  // subsequent create() calls without explicit IDs don't collide
+  const tables = [
+    "locations",
+    "rooms",
+    "roomtypes",
+    "roomstatuses",
+    "bookingstatuses",
+    "paymentstatuses",
+    "durations",
+  ];
+  for (const table of tables) {
+    await testPrisma.$executeRawUnsafe(
+      `SELECT setval(pg_get_serial_sequence('${table}', 'id'), (SELECT COALESCE(MAX(id), 0) FROM "${table}"))`
+    );
+  }
 
   return { location, roomType };
 }
