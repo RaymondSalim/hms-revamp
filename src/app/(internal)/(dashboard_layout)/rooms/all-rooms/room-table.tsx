@@ -161,7 +161,7 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
               name="room_type_id"
               defaultValue={editingRow?.room_type_id ?? ""}
               required
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-card)" }}
             >
               <option value="">Pilih tipe kamar</option>
@@ -180,7 +180,7 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
               name="status_id"
               defaultValue={editingRow?.status_id ?? ""}
               required
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-card)" }}
             >
               <option value="">Pilih status</option>

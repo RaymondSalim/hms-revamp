@@ -180,7 +180,7 @@ export function GuestForm({ guest, bookings, onSuccess }: GuestFormProps) {
               onChange={(e) => setBookingId(parseInt(e.target.value, 10))}
               required
               disabled={!!guest}
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none transition-all duration-150 disabled:opacity-60"
+              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none transition-all duration-150 disabled:opacity-60"
               style={inputStyle}
             >
               <option value="">Pilih booking...</option>

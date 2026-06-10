@@ -256,7 +256,7 @@ function StatusUpdateModal({
                 setRefundedAmount("");
               }
             }}
-            className="w-full px-3 py-2 text-sm rounded-lg border"
+            className="w-full pl-3 pr-9 py-2 text-sm rounded-lg border"
             style={{
               borderColor: "var(--color-border)",
               backgroundColor: "var(--color-bg-card)",

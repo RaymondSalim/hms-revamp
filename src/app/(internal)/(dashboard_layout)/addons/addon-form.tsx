@@ -177,7 +177,7 @@ export function AddonForm({ addon, locationId, existingAddons, onSubmit, onCance
         <select
           value={parentAddonId}
           onChange={(e) => setParentAddonId(e.target.value)}
-          className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+          className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-card)" }}
         >
           <option value="">-- Tidak ada (top-level) --</option>

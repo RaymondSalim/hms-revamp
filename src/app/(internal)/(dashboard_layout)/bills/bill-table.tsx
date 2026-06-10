@@ -320,9 +320,9 @@ export function BillTable({ bills }: Props) {
         <ActionMenu
           items={[
             {
-              label: expandedBillId === row.original.id ? "Tutup" : "Detail",
+              label: "Detail",
               icon: Icons.detail,
-              onClick: () => setExpandedBillId(expandedBillId === row.original.id ? null : row.original.id),
+              onClick: () => setExpandedBillId(row.original.id),
             },
             {
               label: "Ubah Tanggal",
@@ -373,22 +373,14 @@ export function BillTable({ bills }: Props) {
         searchPlaceholder="Cari tagihan..."
       />
 
-      {/* Expanded bill items detail */}
-      {expandedBill && (
-        <div
-          className="mt-4 p-4 rounded-xl border"
-          style={{
-            borderColor: "var(--color-border)",
-            backgroundColor: "var(--color-bg-card)",
-            boxShadow: "var(--shadow-sm)",
-          }}
-        >
-          <h3
-            className="text-sm font-semibold mb-3"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            Item Tagihan - {expandedBill.description}
-          </h3>
+      {/* Bill Detail Modal */}
+      <Modal
+        isOpen={!!expandedBill}
+        onClose={() => setExpandedBillId(null)}
+        title={`Item Tagihan - ${expandedBill?.description ?? ""}`}
+        size="lg"
+      >
+        {expandedBill && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -491,8 +483,8 @@ export function BillTable({ bills }: Props) {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Update Due Date Modal */}
       <Modal

@@ -243,7 +243,7 @@ export function BookingForm({
           value={roomId || ""}
           onChange={(e) => setRoomId(parseInt(e.target.value, 10))}
           required
-          className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+          className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
           style={inputStyle}
         >
           <option value="">Pilih kamar</option>
@@ -308,7 +308,7 @@ export function BookingForm({
               setDurationId(e.target.value ? parseInt(e.target.value, 10) : null)
             }
             required={!isRolling}
-            className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+            className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
             style={inputStyle}
           >
             <option value="">Pilih durasi</option>
@@ -389,7 +389,7 @@ export function BookingForm({
           value={statusId}
           onChange={(e) => setStatusId(parseInt(e.target.value, 10))}
           required
-          className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+          className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
           style={inputStyle}
         >
           {bookingStatuses.map((s) => (
@@ -441,7 +441,7 @@ export function BookingForm({
                 value={addon.addon_id}
                 onChange={(e) => updateAddon(index, "addon_id", e.target.value)}
                 required
-                className="w-full px-2 py-2 text-sm rounded-lg border outline-none"
+                className="w-full pl-2 pr-9 py-2 text-sm rounded-lg border outline-none"
                 style={inputStyle}
               >
                 <option value="">Pilih add-on</option>

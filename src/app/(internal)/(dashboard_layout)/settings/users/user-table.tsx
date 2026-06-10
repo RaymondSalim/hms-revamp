@@ -276,7 +276,7 @@ export function UserTable({ users }: { users: SiteUser[] }) {
             <select
               value={roleId}
               onChange={(e) => setRoleId(Number(e.target.value))}
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none transition-all duration-150"
+              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none transition-all duration-150"
               style={{
                 borderColor: "var(--color-border)",
                 backgroundColor: "var(--color-bg-primary)",

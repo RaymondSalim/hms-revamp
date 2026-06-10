@@ -382,7 +382,7 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
             <select
               value={formBookingId}
               onChange={(e) => setFormBookingId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
               style={{
                 borderColor: "var(--color-border)",
                 backgroundColor: "var(--color-bg-card)",
@@ -453,7 +453,7 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
             <select
               value={formStatusId}
               onChange={(e) => setFormStatusId(Number(e.target.value))}
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
               style={{
                 borderColor: "var(--color-border)",
                 backgroundColor: "var(--color-bg-card)",
