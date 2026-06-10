@@ -578,6 +578,17 @@ export async function scheduleEndOfStayAction(
       where: { booking_id: bookingId, due_date: { gt: endDate } },
     });
 
+    // 3. Reallocate payments to remaining bills
+    await generatePaymentBillMappingFromPaymentsAndBills(bookingId);
+
+    // 4. Rebuild transactions for all payments
+    const payments = await prisma.payment.findMany({
+      where: { booking_id: bookingId },
+    });
+    for (const p of payments) {
+      await createOrUpdatePaymentTransactions(p.id);
+    }
+
     revalidatePath("/bookings");
     return { success: true };
   } catch (e: unknown) {
