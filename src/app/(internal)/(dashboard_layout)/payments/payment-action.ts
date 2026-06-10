@@ -5,6 +5,7 @@ import { uploadToS3, deleteFromS3 } from "@/app/_lib/s3";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { paymentSchema } from "@/app/_lib/zod/payment/zod";
 import { revalidatePath } from "next/cache";
+import { checkPermission } from "@/app/_lib/rbac";
 
 // BL-005: Transaction Splitting
 export async function createOrUpdatePaymentTransactions(paymentId: number) {
@@ -173,6 +174,9 @@ export async function upsertPaymentAction(data: {
   allocation_mode: "auto" | "manual";
   manual_allocations?: Array<{ bill_id: number; amount: number }>;
 }) {
+  const { authorized } = await checkPermission("payments.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   // Validate with Zod
   const parsed = paymentSchema.safeParse({
     booking_id: data.booking_id,
@@ -276,6 +280,9 @@ export async function upsertPaymentAction(data: {
 }
 
 export async function deletePaymentAction(paymentId: number) {
+  const { authorized } = await checkPermission("payments.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: { bookings: true },

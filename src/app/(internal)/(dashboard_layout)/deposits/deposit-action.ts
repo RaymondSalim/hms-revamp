@@ -3,12 +3,15 @@
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { DepositStatus } from "@prisma/client";
+import { checkPermission } from "@/app/_lib/rbac";
 
 export async function updateDepositStatusAction(data: {
   deposit_id: number;
   status: DepositStatus;
   refunded_amount?: number;
 }) {
+  const { authorized } = await checkPermission("deposits.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
   const deposit = await prisma.deposit.findUnique({
     where: { id: data.deposit_id },
     include: { booking: { include: { rooms: true } } },
@@ -84,6 +87,9 @@ export async function updateDepositAmountAction(
   depositId: number,
   amount: number,
 ) {
+  const { authorized } = await checkPermission("deposits.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   if (amount <= 0) return { success: false, error: "Amount must be positive" };
   await prisma.deposit.update({
     where: { id: depositId },

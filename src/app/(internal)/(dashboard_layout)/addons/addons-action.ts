@@ -3,6 +3,7 @@
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { addonSchema } from "@/app/_lib/zod/addon/zod";
+import { checkPermission } from "@/app/_lib/rbac";
 
 export async function upsertAddonAction(data: {
   id?: string;
@@ -19,6 +20,9 @@ export async function upsertAddonAction(data: {
     is_full_payment: boolean;
   }>;
 }) {
+  const { authorized } = await checkPermission("addons.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const parsed = addonSchema.safeParse(data);
   if (!parsed.success) return { success: false, error: parsed.error.flatten() };
 
@@ -69,6 +73,9 @@ export async function upsertAddonAction(data: {
 }
 
 export async function deleteAddonAction(id: string) {
+  const { authorized } = await checkPermission("addons.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   try {
     await prisma.addOn.delete({ where: { id } });
     revalidatePath("/addons");
@@ -85,6 +92,8 @@ export async function scheduleEndOfAddonAction(
   bookingAddonId: string,
   endDate: Date
 ) {
+  const { authorized } = await checkPermission("addons.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
   await prisma.bookingAddOn.update({
     where: { id: bookingAddonId },
     data: { end_date: new Date(endDate), is_rolling: false },

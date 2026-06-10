@@ -3,6 +3,7 @@
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { eventSchema } from "@/app/_lib/zod/event/zod";
+import { checkPermission } from "@/app/_lib/rbac";
 
 export async function getCalendarEventsAction(locationId: number) {
   // Fetch custom events
@@ -77,6 +78,9 @@ export async function upsertEventAction(data: {
   backgroundColor?: string;
   recurring: boolean;
 }) {
+  const { authorized } = await checkPermission("calendar.view");
+  if (!authorized) return { success: false as const, error: "Unauthorized" };
+
   const parsed = eventSchema.safeParse(data);
   if (!parsed.success) return { success: false as const, error: parsed.error.flatten() };
 
@@ -112,6 +116,9 @@ export async function upsertEventAction(data: {
 }
 
 export async function deleteEventAction(id: number) {
+  const { authorized } = await checkPermission("calendar.view");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   await prisma.event.delete({ where: { id } });
   revalidatePath("/schedule/calendar");
   return { success: true };

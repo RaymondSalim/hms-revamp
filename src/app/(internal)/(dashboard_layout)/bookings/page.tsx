@@ -9,8 +9,12 @@ import { prisma } from "@/app/_lib/prisma";
 import { serializeForClient } from "@/app/_lib/util/serialize";
 import { cookies } from "next/headers";
 import { BookingTable } from "./booking-table";
+import { checkPermission } from "@/app/_lib/rbac";
+import { AccessDenied } from "@/app/_components/access-denied";
 
 export default async function BookingsPage() {
+  const { authorized } = await checkPermission("bookings.view");
+  if (!authorized) return <AccessDenied />;
   const locations = await getLocations();
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("selectedLocationId");

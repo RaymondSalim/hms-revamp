@@ -1,18 +1,9 @@
 "use server";
 
-import { auth } from "@/app/_lib/auth";
 import { createUser, updateUser, deleteUser } from "@/app/_db/site-users";
 import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
-
-// BL-023: Only role_id=1 can manage users
-async function checkAdmin() {
-  const session = await auth();
-  if (!session || session.user.role_id !== 1) {
-    return { authorized: false as const };
-  }
-  return { authorized: true as const, session };
-}
+import { checkPermission } from "@/app/_lib/rbac";
 
 export async function upsertSiteUserAction(data: {
   id?: string;
@@ -21,7 +12,7 @@ export async function upsertSiteUserAction(data: {
   password?: string;
   role_id: number;
 }) {
-  const { authorized } = await checkAdmin();
+  const { authorized } = await checkPermission("users.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
   try {
@@ -59,7 +50,7 @@ export async function upsertSiteUserAction(data: {
 }
 
 export async function deleteUserAction(id: string) {
-  const { authorized } = await checkAdmin();
+  const { authorized } = await checkPermission("users.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
   await deleteUser(id);

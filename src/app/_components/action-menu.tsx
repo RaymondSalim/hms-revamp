@@ -102,6 +102,7 @@ export function ActionMenu({ items, maxInline = 2 }: ActionMenuProps) {
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}
+          title="Lainnya"
           className="p-1.5 rounded-lg transition-colors duration-150"
           style={{
             color: "var(--color-text-secondary)",

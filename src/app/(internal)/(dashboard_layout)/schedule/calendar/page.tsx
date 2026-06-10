@@ -2,8 +2,12 @@ import { cookies } from "next/headers";
 import { getLocations } from "@/app/_db/locations";
 import { getCalendarEventsAction } from "./calendar-action";
 import { CalendarClient } from "./calendar-client";
+import { checkPermission } from "@/app/_lib/rbac";
+import { AccessDenied } from "@/app/_components/access-denied";
 
 export default async function CalendarPage() {
+  const { authorized } = await checkPermission("calendar.view");
+  if (!authorized) return <AccessDenied />;
   const locations = await getLocations();
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("selectedLocationId");

@@ -2,8 +2,11 @@
 import { revalidatePath } from "next/cache";
 import { createLocation, updateLocation, deleteLocation } from "@/app/_db/locations";
 import { locationSchema } from "@/app/_lib/zod/room/zod";
+import { checkPermission } from "@/app/_lib/rbac";
 
 export async function upsertLocationAction(formData: { id?: number; name: string; address: string }) {
+  const { authorized } = await checkPermission("locations.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
   const parsed = locationSchema.safeParse(formData);
   if (!parsed.success) return { success: false, error: parsed.error.flatten() };
 
@@ -17,6 +20,8 @@ export async function upsertLocationAction(formData: { id?: number; name: string
 }
 
 export async function deleteLocationAction(id: number) {
+  const { authorized } = await checkPermission("locations.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
   try {
     await deleteLocation(id);
     revalidatePath("/locations");

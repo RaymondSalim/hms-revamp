@@ -7,12 +7,14 @@ import { useState } from "react";
 interface SidebarProps {
   userName: string;
   userRole: string;
+  permissions: string[];
 }
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  permission?: string;
 }
 
 interface NavSection {
@@ -27,26 +29,31 @@ const navSections: NavSection[] = [
         label: "Dashboard",
         href: "/dashboard",
         icon: <DashboardIcon />,
+        permission: "dashboard.view",
       },
       {
         label: "Pemesanan",
         href: "/bookings",
         icon: <BookingsIcon />,
+        permission: "bookings.view",
       },
       {
         label: "Tagihan",
         href: "/bills",
         icon: <BillsIcon />,
+        permission: "bills.view",
       },
       {
         label: "Pembayaran",
         href: "/payments",
         icon: <PaymentsIcon />,
+        permission: "payments.view",
       },
       {
         label: "Deposit",
         href: "/deposits",
         icon: <DepositIcon />,
+        permission: "deposits.view",
       },
     ],
   },
@@ -57,11 +64,13 @@ const navSections: NavSection[] = [
         label: "Penyewa",
         href: "/residents/tenants",
         icon: <TenantsIcon />,
+        permission: "tenants.view",
       },
       {
         label: "Tamu",
         href: "/residents/guests",
         icon: <GuestsIcon />,
+        permission: "guests.view",
       },
     ],
   },
@@ -72,16 +81,19 @@ const navSections: NavSection[] = [
         label: "Semua Kamar",
         href: "/rooms/all-rooms",
         icon: <RoomsIcon />,
+        permission: "rooms.view",
       },
       {
         label: "Tipe Kamar",
         href: "/rooms/room-types",
         icon: <RoomTypesIcon />,
+        permission: "room_types.view",
       },
       {
         label: "Durasi",
         href: "/rooms/durations",
         icon: <DurationsIcon />,
+        permission: "durations.view",
       },
     ],
   },
@@ -91,6 +103,7 @@ const navSections: NavSection[] = [
         label: "Add-on",
         href: "/addons",
         icon: <AddonsIcon />,
+        permission: "addons.view",
       },
     ],
   },
@@ -101,11 +114,13 @@ const navSections: NavSection[] = [
         label: "Ringkasan",
         href: "/financials/summary",
         icon: <FinancialsIcon />,
+        permission: "financials.view",
       },
       {
         label: "Ekspor",
         href: "/financials/export",
         icon: <ExportIcon />,
+        permission: "financials.export",
       },
     ],
   },
@@ -116,6 +131,7 @@ const navSections: NavSection[] = [
         label: "Kalender",
         href: "/schedule/calendar",
         icon: <CalendarIcon />,
+        permission: "calendar.view",
       },
     ],
   },
@@ -126,19 +142,37 @@ const navSections: NavSection[] = [
         label: "Lokasi",
         href: "/locations",
         icon: <LocationsIcon />,
+        permission: "locations.view",
       },
       {
         label: "Pengguna",
         href: "/settings/users",
         icon: <UsersIcon />,
+        permission: "users.view",
+      },
+      {
+        label: "Hak Akses",
+        href: "/settings/roles",
+        icon: <RolesIcon />,
+        permission: "roles.manage",
       },
     ],
   },
 ];
 
-export function Sidebar({ userName, userRole }: SidebarProps) {
+export function Sidebar({ userName, userRole, permissions }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const permSet = new Set(permissions);
+
+  const filteredSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.permission || permSet.has(item.permission)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <>
@@ -189,7 +223,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {navSections.map((section, sIdx) => (
+          {filteredSections.map((section, sIdx) => (
             <div key={sIdx} className={sIdx > 0 ? "pt-4" : ""}>
               {section.title && (
                 <p
@@ -411,6 +445,14 @@ function UsersIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
       <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+    </svg>
+  );
+}
+
+function RolesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
     </svg>
   );
 }

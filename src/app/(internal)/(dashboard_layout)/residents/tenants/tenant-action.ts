@@ -4,6 +4,7 @@ import { createTenant, updateTenant, deleteTenant } from "@/app/_db/tenant";
 import { uploadToS3, deleteFromS3 } from "@/app/_lib/s3";
 import { tenantSchema } from "@/app/_lib/zod/tenant/zod";
 import { revalidatePath } from "next/cache";
+import { checkPermission } from "@/app/_lib/rbac";
 
 export async function upsertTenantAction(data: {
   id?: string;
@@ -27,6 +28,9 @@ export async function upsertTenantAction(data: {
   second_resident_id_file_name?: string;
   second_resident_relation?: string;
 }) {
+  const { authorized } = await checkPermission("tenants.manage");
+  if (!authorized) return { success: false as const, error: "Unauthorized" };
+
   const parsed = tenantSchema.safeParse(data);
   if (!parsed.success) return { success: false as const, error: parsed.error.flatten() };
 
@@ -105,6 +109,9 @@ export async function upsertTenantAction(data: {
 }
 
 export async function deleteTenantAction(id: string) {
+  const { authorized } = await checkPermission("tenants.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   await deleteTenant(id);
   revalidatePath("/residents/tenants");
   return { success: true };

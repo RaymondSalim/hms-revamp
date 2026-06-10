@@ -72,7 +72,8 @@ const customStyles: StylesConfig<SelectOption, false, GroupBase<SelectOption>> =
   dropdownIndicator: (base) => ({
     ...base,
     color: "var(--color-text-secondary)",
-    padding: "0 8px",
+    padding: "0 12px 0 8px",
+    "& svg": { width: "16px", height: "16px" },
     "&:hover": {
       color: "var(--color-text-primary)",
     },

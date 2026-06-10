@@ -3,6 +3,8 @@ import { getDurations } from "@/app/_db/durations";
 import { getLocations } from "@/app/_db/locations";
 import { serializeForClient } from "@/app/_lib/util/serialize";
 import { RoomTypeTable } from "./room-type-table";
+import { checkPermission } from "@/app/_lib/rbac";
+import { AccessDenied } from "@/app/_components/access-denied";
 interface SerializedRoomTypeDuration {
   room_type_id: number;
   duration_id: number;
@@ -11,6 +13,8 @@ interface SerializedRoomTypeDuration {
 }
 
 export default async function RoomTypesPage() {
+  const { authorized } = await checkPermission("room_types.view");
+  if (!authorized) return <AccessDenied />;
   const roomTypes = await getRoomTypes();
   const durations = await getDurations();
   const locations = await getLocations();

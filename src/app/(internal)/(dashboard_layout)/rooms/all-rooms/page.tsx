@@ -5,8 +5,12 @@ import { prisma } from "@/app/_lib/prisma";
 import { serializeForClient } from "@/app/_lib/util/serialize";
 import { cookies } from "next/headers";
 import { RoomTable } from "./room-table";
+import { checkPermission } from "@/app/_lib/rbac";
+import { AccessDenied } from "@/app/_components/access-denied";
 
 export default async function AllRoomsPage() {
+  const { authorized } = await checkPermission("rooms.view");
+  if (!authorized) return <AccessDenied />;
   const locations = await getLocations();
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("selectedLocationId");

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
+import { checkPermission } from "@/app/_lib/rbac";
 
 // BL-003: Payment Auto-Allocation Simulation
 export async function simulateUnpaidBillPaymentAction(
@@ -108,6 +109,9 @@ export async function createBillAction(data: {
     internal_description?: string;
   }>;
 }) {
+  const { authorized } = await checkPermission("bills.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const bill = await prisma.bill.create({
     data: {
       booking_id: data.booking_id,
@@ -136,6 +140,9 @@ export async function createBillAction(data: {
 }
 
 export async function updateBillDueDateAction(billId: number, dueDate: Date) {
+  const { authorized } = await checkPermission("bills.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const bill = await prisma.bill.findUnique({ where: { id: billId } });
   if (!bill) return { success: false, error: "Bill not found" };
 
@@ -155,6 +162,9 @@ export async function addBillItemAction(
   billId: number,
   item: { description: string; amount: number; internal_description?: string }
 ) {
+  const { authorized } = await checkPermission("bills.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const bill = await prisma.bill.findUnique({ where: { id: billId } });
   if (!bill) return { success: false, error: "Bill not found" };
 
@@ -177,6 +187,9 @@ export async function updateBillItemAction(
   itemId: number,
   data: { description: string; amount: number; internal_description?: string }
 ) {
+  const { authorized } = await checkPermission("bills.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const item = await prisma.billItem.findUnique({
     where: { id: itemId },
     include: { bill: true },
@@ -190,6 +203,9 @@ export async function updateBillItemAction(
 }
 
 export async function deleteBillItemAction(itemId: number) {
+  const { authorized } = await checkPermission("bills.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const item = await prisma.billItem.findUnique({
     where: { id: itemId },
     include: { bill: true },

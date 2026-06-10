@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
-import { getUserByEmail } from "@/app/_db/site-users";
+import { getUserByEmail, getUserById } from "@/app/_db/site-users";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -39,6 +39,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id!;
         token.role_id = (user as any).role_id;
         token.shouldReset = (user as any).shouldReset;
+      } else if (token.id) {
+        const dbUser = await getUserById(token.id as string);
+        if (dbUser) {
+          token.role_id = dbUser.role_id ?? 0;
+          token.shouldReset = dbUser.shouldReset;
+        }
       }
       return token;
     },

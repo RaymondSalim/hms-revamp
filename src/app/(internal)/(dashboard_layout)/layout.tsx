@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getAppSetup } from "@/app/_db/settings";
 import { getLocations } from "@/app/_db/locations";
 import { auth } from "@/app/_lib/auth";
+import { getUserPermissions } from "@/app/_lib/rbac";
 import { LocationProvider } from "@/app/_context/location-context";
 import { Sidebar } from "@/app/_components/sidebar";
 import { Header } from "@/app/_components/header";
@@ -18,6 +19,7 @@ export default async function DashboardLayout({
   }
 
   const session = await auth();
+  const permissions = await getUserPermissions();
   const locations = await getLocations();
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("selectedLocationId");
@@ -29,6 +31,7 @@ export default async function DashboardLayout({
         <Sidebar
           userName={session?.user?.name ?? "Pengguna"}
           userRole={session?.user?.role_id === 1 ? "Admin" : "Staff"}
+          permissions={[...permissions]}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />

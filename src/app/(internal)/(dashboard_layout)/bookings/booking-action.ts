@@ -8,6 +8,7 @@ import { bookingSchema } from "@/app/_lib/zod/booking/zod";
 import { getDaysInMonth, lastDayOfMonth, addMonths, startOfMonth } from "date-fns";
 import type { DepositStatus } from "@prisma/client";
 import { getAddonChargeForMonth } from "@/app/_lib/util/billing";
+import { checkPermission } from "@/app/_lib/rbac";
 
 // --- Shared bill generation helper types ---
 interface BillGenerationBooking {
@@ -318,6 +319,9 @@ export async function upsertBookingAction(data: {
   deposit_amount?: number;
   addon_ids?: Array<{ addon_id: string; start_date: Date }>;
 }) {
+  const { authorized } = await checkPermission("bookings.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   const parsed = bookingSchema.safeParse(data);
   if (!parsed.success) return { success: false, error: parsed.error.flatten() };
 
@@ -549,6 +553,9 @@ export async function scheduleEndOfStayAction(
   bookingId: number,
   endDate: Date
 ) {
+  const { authorized } = await checkPermission("bookings.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   try {
     // 1. Update booking: end_date=endDate, is_rolling=false
     await prisma.booking.update({
@@ -578,6 +585,9 @@ export async function checkInOutAction(data: {
   deposit_status?: DepositStatus;
   refunded_amount?: number;
 }) {
+  const { authorized } = await checkPermission("bookings.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   try {
     // 1. Create CheckInOutLog record
     await prisma.checkInOutLog.create({
@@ -640,6 +650,9 @@ export async function checkInOutAction(data: {
 
 // --- DELETE BOOKING ---
 export async function deleteBookingAction(id: number) {
+  const { authorized } = await checkPermission("bookings.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
   try {
     const booking = await prisma.booking.findUnique({ where: { id } });
     const roomId = booking?.room_id;

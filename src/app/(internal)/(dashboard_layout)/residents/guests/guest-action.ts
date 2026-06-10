@@ -6,8 +6,12 @@ import { lastDayOfMonth } from "date-fns";
 import { guestSchema, guestStaySchema } from "@/app/_lib/zod/guest/zod";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 import { splitGuestStayByMonth } from "@/app/_lib/util/guest-billing";
+import { checkPermission } from "@/app/_lib/rbac";
 
 export async function upsertGuestAction(data: { id?: number; name: string; email?: string; phone?: string; booking_id: number }) {
+  const { authorized } = await checkPermission("guests.manage");
+  if (!authorized) return { success: false as const, error: "Unauthorized" };
+
   const parsed = guestSchema.safeParse(data);
   if (!parsed.success) return { success: false as const, error: parsed.error.flatten() };
 
@@ -22,6 +26,9 @@ export async function upsertGuestAction(data: { id?: number; name: string; email
 }
 
 export async function upsertGuestStayAction(data: { id?: number; guest_id: number; start_date: Date; end_date: Date; daily_fee: number }) {
+  const { authorized } = await checkPermission("guests.manage");
+  if (!authorized) return { success: false as const, error: "Unauthorized" };
+
   const parsed = guestStaySchema.safeParse(data);
   if (!parsed.success) return { success: false as const, error: parsed.error.flatten() };
 
@@ -82,12 +89,17 @@ export async function upsertGuestStayAction(data: { id?: number; guest_id: numbe
 }
 
 export async function deleteGuestAction(guestId: number) {
+  const { authorized } = await checkPermission("guests.manage");
+  if (!authorized) return { success: false as const, error: "Unauthorized" };
+
   await prisma.guest.delete({ where: { id: guestId } });
   revalidatePath("/residents/guests");
   return { success: true as const };
 }
 
 export async function deleteGuestStayAction(stayId: number) {
+  const { authorized } = await checkPermission("guests.manage");
+  if (!authorized) return { success: false as const, error: "Unauthorized" };
   // Delete associated bill items first
   await prisma.billItem.deleteMany({
     where: { related_id: { path: ["guest_stay_id"], equals: stayId } },
