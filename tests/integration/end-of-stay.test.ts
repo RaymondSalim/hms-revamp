@@ -75,4 +75,43 @@ describe("End of Stay (BL-033)", () => {
     expect(transactions.length).toBeGreaterThan(0);
     expect(Number(transactions[0].amount)).toBe(totalAllocated);
   });
+
+  it("should prorate the final month bill when ending mid-month", async () => {
+    const tenant = await testPrisma.tenant.create({
+      data: { name: "Test Tenant 2", id_number: "456", email: "t2@test.com" },
+    });
+
+    // Create rolling booking starting Jan 1 with fee 3,100,000 (100K/day in Jan)
+    await upsertBookingAction({
+      room_id: 2,
+      start_date: new Date("2025-01-01"),
+      duration_id: null,
+      fee: 3100000,
+      tenant_id: tenant.id,
+      is_rolling: true,
+      status_id: 2,
+    });
+
+    const booking = await testPrisma.booking.findFirst({
+      where: { tenant_id: tenant.id },
+    });
+
+    // Schedule end on Jan 15 (15 out of 31 days)
+    await scheduleEndOfStayAction(booking!.id, new Date("2025-01-15"));
+
+    // The January bill should be prorated: (15/31) * 3,100,000 = 1,500,000
+    const bills = await testPrisma.bill.findMany({
+      where: { booking_id: booking!.id },
+      include: { bill_item: true },
+    });
+
+    expect(bills).toHaveLength(1);
+    const roomItem = bills[0].bill_item.find(
+      (i) => i.description === "Biaya Sewa"
+    );
+    expect(roomItem).toBeDefined();
+
+    // Prorated: 15/31 * 3,100,000 = 1,500,000
+    expect(Number(roomItem!.amount)).toBe(1500000);
+  });
 });

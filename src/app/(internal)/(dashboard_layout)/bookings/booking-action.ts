@@ -578,6 +578,41 @@ export async function scheduleEndOfStayAction(
       where: { booking_id: bookingId, due_date: { gt: endDate } },
     });
 
+    // 2b. Prorate the final month's bill if ending mid-month
+    const endDay = endDate.getDate();
+    const endMonth = endDate.getMonth();
+    const endYear = endDate.getFullYear();
+    const daysInEndMonth = new Date(endYear, endMonth + 1, 0).getDate();
+    const isLastDayOfMonth = endDay === daysInEndMonth;
+
+    if (!isLastDayOfMonth) {
+      // Find the bill for the end month (due_date = last day of that month)
+      const lastDayDate = new Date(endYear, endMonth + 1, 0);
+      const finalBill = await prisma.bill.findFirst({
+        where: {
+          booking_id: bookingId,
+          due_date: lastDayDate,
+        },
+        include: { bill_item: true },
+      });
+
+      if (finalBill) {
+        const ratio = endDay / daysInEndMonth;
+
+        // Prorate GENERATED items (not deposits, not CREATED items)
+        for (const item of finalBill.bill_item) {
+          if (item.type !== "GENERATED") continue;
+          if (item.related_id) continue; // Skip deposit items
+
+          const proratedAmount = Math.round(Number(item.amount) * ratio);
+          await prisma.billItem.update({
+            where: { id: item.id },
+            data: { amount: proratedAmount },
+          });
+        }
+      }
+    }
+
     // 3. Reallocate payments to remaining bills
     await generatePaymentBillMappingFromPaymentsAndBills(bookingId);
 
