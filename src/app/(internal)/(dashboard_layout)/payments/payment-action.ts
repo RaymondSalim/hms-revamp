@@ -248,6 +248,7 @@ export async function upsertPaymentAction(data: {
         amount: data.amount,
         payment_date: new Date(data.payment_date),
         status_id: data.status_id ?? 1,
+        allocation_mode: data.allocation_mode,
         ...(proofKey && { payment_proof: proofKey }),
       },
     });
@@ -261,6 +262,7 @@ export async function upsertPaymentAction(data: {
         payment_date: new Date(data.payment_date),
         status_id: data.status_id ?? 1,
         payment_proof: proofKey,
+        allocation_mode: data.allocation_mode,
       },
     });
     paymentId = payment.id;

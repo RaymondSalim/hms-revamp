@@ -169,12 +169,13 @@ model BillItem {
 }
 
 model Payment {
-  id            Int      @id @default(autoincrement())
-  booking_id    Int
-  amount        Decimal  @db.Decimal(10, 2)
-  payment_date  DateTime @db.Date
-  payment_proof String?  @db.VarChar(255)
-  status_id     Int?
+  id              Int      @id @default(autoincrement())
+  booking_id      Int
+  amount          Decimal  @db.Decimal(10, 2)
+  payment_date    DateTime @db.Date
+  payment_proof   String?  @db.VarChar(255)
+  status_id       Int?
+  allocation_mode String   @default("auto") @db.VarChar(10)
 
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt

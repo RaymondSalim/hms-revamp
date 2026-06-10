@@ -45,7 +45,7 @@ export async function simulateUnpaidBillPaymentAction(
 export async function generatePaymentBillMappingFromPaymentsAndBills(
   bookingId: number
 ) {
-  const payments = await prisma.payment.findMany({
+  const allPayments = await prisma.payment.findMany({
     where: { booking_id: bookingId },
     orderBy: { payment_date: "asc" },
   });
@@ -56,18 +56,36 @@ export async function generatePaymentBillMappingFromPaymentsAndBills(
     orderBy: { due_date: "asc" },
   });
 
-  // Delete all existing payment-bill mappings for these payments
-  const paymentIds = payments.map((p) => p.id);
-  if (paymentIds.length > 0) {
+  // Separate manual and auto payments
+  const autoPayments = allPayments.filter((p) => p.allocation_mode !== "manual");
+  const manualPayments = allPayments.filter((p) => p.allocation_mode === "manual");
+
+  // Only delete PaymentBill records for AUTO payments
+  const autoPaymentIds = autoPayments.map((p) => p.id);
+  if (autoPaymentIds.length > 0) {
     await prisma.paymentBill.deleteMany({
-      where: { payment_id: { in: paymentIds } },
+      where: { payment_id: { in: autoPaymentIds } },
     });
   }
 
-  // Track cumulative allocations per bill
-  const billAllocated = new Map<number, number>();
+  // Calculate how much each bill already has from manual allocations
+  const manualBillAllocated = new Map<number, number>();
+  if (manualPayments.length > 0) {
+    const manualMappings = await prisma.paymentBill.findMany({
+      where: { payment_id: { in: manualPayments.map((p) => p.id) } },
+    });
+    for (const m of manualMappings) {
+      manualBillAllocated.set(
+        m.bill_id,
+        (manualBillAllocated.get(m.bill_id) || 0) + Number(m.amount)
+      );
+    }
+  }
 
-  for (const payment of payments) {
+  // Track cumulative allocations per bill (starting from manual amounts)
+  const billAllocated = new Map<number, number>(manualBillAllocated);
+
+  for (const payment of autoPayments) {
     let remainingPayment = Number(payment.amount);
 
     for (const bill of bills) {
