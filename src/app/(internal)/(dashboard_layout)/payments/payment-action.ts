@@ -34,6 +34,12 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
 
   if (!payment) return;
 
+  // Verification gate: only create transactions for verified payments
+  // status_id: 1=PENDING, 2=VERIFIED, 3=REJECTED; null=assumed verified (backwards compat)
+  if (payment.status_id === 1 || payment.status_id === 3) {
+    return;
+  }
+
   const locationId = payment.bookings.rooms?.location_id;
   if (!locationId) return;
 
