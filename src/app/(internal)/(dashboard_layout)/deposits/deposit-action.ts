@@ -4,6 +4,8 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { DepositStatus } from "@prisma/client";
 import { checkPermission } from "@/app/_lib/rbac";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
+import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 
 export async function updateDepositStatusAction(data: {
   deposit_id: number;
@@ -31,6 +33,33 @@ export async function updateDepositStatusAction(data: {
 
   if (data.status === "APPLIED") {
     updateData.applied_at = new Date();
+
+    // Create a credit bill item on the latest bill to offset the deposit
+    const latestBill = await prisma.bill.findFirst({
+      where: { booking_id: deposit.booking.id },
+      orderBy: { due_date: "desc" },
+    });
+
+    if (latestBill) {
+      await prisma.billItem.create({
+        data: {
+          bill_id: latestBill.id,
+          description: "Potongan Deposit",
+          amount: -Number(deposit.amount),
+          type: "CREATED",
+          related_id: { deposit_id: deposit.id },
+        },
+      });
+
+      // Trigger payment reallocation since bill total changed
+      await generatePaymentBillMappingFromPaymentsAndBills(deposit.booking.id);
+      const payments = await prisma.payment.findMany({
+        where: { booking_id: deposit.booking.id },
+      });
+      for (const p of payments) {
+        await createOrUpdatePaymentTransactions(p.id);
+      }
+    }
   }
 
   if (data.status === "REFUNDED" || data.status === "PARTIALLY_REFUNDED") {
