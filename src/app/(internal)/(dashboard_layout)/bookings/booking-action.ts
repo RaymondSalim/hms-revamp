@@ -9,6 +9,7 @@ import { getDaysInMonth, lastDayOfMonth, addMonths, startOfMonth } from "date-fn
 import type { DepositStatus } from "@prisma/client";
 import { getAddonChargeForMonth } from "@/app/_lib/util/billing";
 import { checkPermission } from "@/app/_lib/rbac";
+import { logAudit } from "@/app/_lib/audit";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 
@@ -624,6 +625,7 @@ export async function scheduleEndOfStayAction(
       await createOrUpdatePaymentTransactions(p.id);
     }
 
+    await logAudit(`booking.end_scheduled: id=${bookingId}, end_date=${endDate.toISOString().split("T")[0]}`);
     revalidatePath("/bookings");
     return { success: true };
   } catch (e: unknown) {
@@ -752,6 +754,7 @@ export async function checkInOutAction(data: {
       }
     }
 
+    await logAudit(`booking.${data.event_type.toLowerCase()}: id=${data.booking_id}, date=${new Date(data.event_date).toISOString().split("T")[0]}${data.deposit_status ? `, deposit=${data.deposit_status}` : ""}`);
     revalidatePath("/bookings");
     return { success: true };
   } catch (e: unknown) {

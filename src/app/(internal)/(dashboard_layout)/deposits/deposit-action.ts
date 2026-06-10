@@ -6,6 +6,7 @@ import type { DepositStatus } from "@prisma/client";
 import { checkPermission } from "@/app/_lib/rbac";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
+import { logAudit } from "@/app/_lib/audit";
 
 export async function updateDepositStatusAction(data: {
   deposit_id: number;
@@ -109,6 +110,7 @@ export async function updateDepositStatusAction(data: {
   });
 
   revalidatePath("/deposits");
+  await logAudit(`deposit.status_changed: id=${data.deposit_id}, status=${data.status}${data.refunded_amount ? `, refunded=${data.refunded_amount}` : ""}`);
   return { success: true };
 }
 

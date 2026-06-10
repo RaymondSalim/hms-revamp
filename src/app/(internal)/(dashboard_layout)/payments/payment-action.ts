@@ -6,6 +6,7 @@ import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)
 import { paymentSchema } from "@/app/_lib/zod/payment/zod";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
+import { logAudit } from "@/app/_lib/audit";
 
 // BL-005: Transaction Splitting
 export async function createOrUpdatePaymentTransactions(paymentId: number) {
@@ -300,6 +301,7 @@ export async function upsertPaymentAction(data: {
   await createOrUpdatePaymentTransactions(paymentId);
 
   revalidatePath("/payments");
+  await logAudit(`payment.${data.id ? "updated" : "created"}: id=${paymentId}, amount=${data.amount}, booking_id=${data.booking_id}`);
   return { success: true, paymentId };
 }
 
@@ -346,5 +348,6 @@ export async function deletePaymentAction(paymentId: number) {
   }
 
   revalidatePath("/payments");
+  await logAudit(`payment.deleted: id=${paymentId}, booking_id=${bookingId}`);
   return { success: true };
 }
