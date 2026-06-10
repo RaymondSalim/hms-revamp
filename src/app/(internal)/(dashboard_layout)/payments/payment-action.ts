@@ -39,6 +39,7 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
 
   let depositTotal = 0;
   let regularTotal = 0;
+  let excessTotal = 0;
   let depositId: number | null = null;
 
   for (const pb of payment.paymentBills) {
@@ -78,9 +79,9 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
       pbRemaining -= allocated;
     }
 
-    // If there's still remaining after all items, treat as regular
+    // If there's still remaining after all items, it's overpayment
     if (pbRemaining > 0) {
-      regularTotal += pbRemaining;
+      excessTotal += pbRemaining;
     }
   }
 
@@ -116,6 +117,21 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
         description: "Biaya Sewa",
         date: payment.payment_date,
         category: "Sewa",
+        type: "INCOME",
+        location_id: locationId,
+        related_id: { payment_id: paymentId },
+      },
+    });
+  }
+
+  // Create "Kelebihan Bayar" INCOME transaction if there's overpayment
+  if (excessTotal > 0) {
+    await prisma.transaction.create({
+      data: {
+        amount: excessTotal,
+        description: "Kelebihan Bayar",
+        date: payment.payment_date,
+        category: "Kelebihan Bayar",
         type: "INCOME",
         location_id: locationId,
         related_id: { payment_id: paymentId },
