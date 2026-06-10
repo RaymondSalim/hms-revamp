@@ -662,27 +662,74 @@ export async function checkInOutAction(data: {
         data: { end_date: data.event_date, is_rolling: false },
       });
 
-      // Update deposit status if provided
+      // Handle deposit status transition with proper validation & transactions
       if (data.deposit_status) {
         const deposit = await prisma.deposit.findUnique({
           where: { booking_id: data.booking_id },
+          include: { booking: { include: { rooms: true } } },
         });
+
         if (deposit) {
-          const updateData: {
-            status: DepositStatus;
-            applied_at?: Date;
-            refunded_at?: Date;
-            refunded_amount?: number;
-          } = { status: data.deposit_status };
-          if (data.deposit_status === "APPLIED")
+          // Validate: can only transition from HELD
+          if (deposit.status !== "HELD") {
+            return {
+              success: false,
+              error: "Deposit hanya bisa diubah dari status HELD",
+            };
+          }
+
+          const updateData: Record<string, unknown> = {
+            status: data.deposit_status,
+          };
+
+          if (data.deposit_status === "APPLIED") {
             updateData.applied_at = new Date();
+          }
+
           if (
             data.deposit_status === "REFUNDED" ||
             data.deposit_status === "PARTIALLY_REFUNDED"
           ) {
+            if (!data.refunded_amount || data.refunded_amount <= 0) {
+              return { success: false, error: "Jumlah refund harus diisi" };
+            }
+            if (
+              data.deposit_status === "REFUNDED" &&
+              data.refunded_amount !== Number(deposit.amount)
+            ) {
+              return {
+                success: false,
+                error: "Refund penuh harus sama dengan jumlah deposit",
+              };
+            }
+            if (
+              data.deposit_status === "PARTIALLY_REFUNDED" &&
+              data.refunded_amount >= Number(deposit.amount)
+            ) {
+              return {
+                success: false,
+                error: "Refund sebagian harus kurang dari jumlah deposit",
+              };
+            }
+
             updateData.refunded_at = new Date();
             updateData.refunded_amount = data.refunded_amount;
+
+            // Create EXPENSE transaction for refund (BL-008)
+            const locationId = deposit.booking.rooms!.location_id!;
+            await prisma.transaction.create({
+              data: {
+                amount: data.refunded_amount,
+                description: "Deposit",
+                date: new Date(),
+                category: "Deposit",
+                type: "EXPENSE",
+                location_id: locationId,
+                related_id: { deposit_id: deposit.id },
+              },
+            });
           }
+
           await prisma.deposit.update({
             where: { id: deposit.id },
             data: updateData,
@@ -694,6 +741,15 @@ export async function checkInOutAction(data: {
       await prisma.bill.deleteMany({
         where: { booking_id: data.booking_id, due_date: { gt: data.event_date } },
       });
+
+      // Reallocate payments to remaining bills
+      await generatePaymentBillMappingFromPaymentsAndBills(data.booking_id);
+      const payments = await prisma.payment.findMany({
+        where: { booking_id: data.booking_id },
+      });
+      for (const p of payments) {
+        await createOrUpdatePaymentTransactions(p.id);
+      }
     }
 
     revalidatePath("/bookings");
