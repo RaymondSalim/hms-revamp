@@ -306,11 +306,31 @@ describe("Transaction Splitting (BL-005)", () => {
         data: {
           booking_id: booking.id,
           amount: 1000000,
-          status: "HELD", // Already held from a previous payment
+          status: "HELD",
         },
       });
 
-      const bill = await testPrisma.bill.create({
+      // Bill 1: deposit only (separate so room payment won't touch it)
+      const depositBill = await testPrisma.bill.create({
+        data: {
+          booking_id: booking.id,
+          description: "Tagihan Deposit",
+          due_date: new Date("2025-01-15"),
+        },
+      });
+
+      await testPrisma.billItem.create({
+        data: {
+          bill_id: depositBill.id,
+          description: "Deposit",
+          amount: 1000000,
+          type: "GENERATED",
+          related_id: { deposit_id: deposit.id },
+        },
+      });
+
+      // Bill 2: room fee only
+      const roomBill = await testPrisma.bill.create({
         data: {
           booking_id: booking.id,
           description: "Tagihan Bulan 1",
@@ -320,24 +340,14 @@ describe("Transaction Splitting (BL-005)", () => {
 
       await testPrisma.billItem.create({
         data: {
-          bill_id: bill.id,
-          description: "Deposit",
-          amount: 1000000,
-          type: "GENERATED",
-          related_id: { deposit_id: deposit.id },
-        },
-      });
-
-      await testPrisma.billItem.create({
-        data: {
-          bill_id: bill.id,
+          bill_id: roomBill.id,
           description: "Biaya Sewa",
           amount: 3000000,
           type: "GENERATED",
         },
       });
 
-      // Payment that only covers room fee (no deposit portion)
+      // Payment mapped only to room bill (no deposit allocation)
       const payment = await testPrisma.payment.create({
         data: {
           booking_id: booking.id,
@@ -346,24 +356,21 @@ describe("Transaction Splitting (BL-005)", () => {
         },
       });
 
-      // Map the payment: payment pays room fee only (skipping deposit in allocation)
       await testPrisma.paymentBill.create({
         data: {
           payment_id: payment.id,
-          bill_id: bill.id,
+          bill_id: roomBill.id,
           amount: 3000000,
         },
       });
 
-      // When we call createOrUpdatePaymentTransactions and NO deposit_id found
-      // AND there are no existing deposit income transactions, it should revert
+      // Payment has no deposit allocation, so BL-007 should revert deposit to UNPAID
       await createOrUpdatePaymentTransactions(payment.id);
 
       const afterDeposit = await testPrisma.deposit.findUnique({
         where: { id: deposit.id },
       });
 
-      // The deposit should revert to UNPAID since there are no deposit income transactions
       expect(afterDeposit!.status).toBe("UNPAID");
     });
   });
