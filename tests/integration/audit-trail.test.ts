@@ -2,13 +2,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import "../helpers/mock-next";
 import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 
-// Mock auth to return a known user
-vi.mock("@/app/_lib/auth", () => ({
-  auth: vi.fn().mockResolvedValue({
-    user: { id: "test-user-id", name: "Test", email: "test@test.com" },
-  }),
-}));
-
 import { logAudit } from "@/app/_lib/audit";
 
 describe("Audit Trail", () => {

@@ -26,3 +26,10 @@ vi.mock("@/app/_lib/rbac", () => ({
   getUserPermissions: vi.fn().mockResolvedValue(new Set()),
   requirePermission: vi.fn().mockResolvedValue(undefined),
 }));
+
+// Mock auth (audit trail uses this to get current user)
+vi.mock("@/app/_lib/auth", () => ({
+  auth: vi.fn().mockResolvedValue({
+    user: { id: "test-user-id", name: "Test", email: "test@test.com" },
+  }),
+}));
