@@ -9,6 +9,8 @@ import { getDaysInMonth, lastDayOfMonth, addMonths, startOfMonth } from "date-fn
 import type { DepositStatus } from "@prisma/client";
 import { getAddonChargeForMonth } from "@/app/_lib/util/billing";
 import { checkPermission } from "@/app/_lib/rbac";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
+import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 
 // --- Shared bill generation helper types ---
 interface BillGenerationBooking {
@@ -467,8 +469,16 @@ export async function upsertBookingAction(data: {
         }
       }
 
-      // 6. Payment reallocation (Phase 11 integration point)
-      // Will be connected once Phase 11 is implemented
+      // 6. Reallocate payments after bill regeneration
+      await generatePaymentBillMappingFromPaymentsAndBills(data.id);
+
+      // 7. Rebuild transactions for all payments
+      const payments = await prisma.payment.findMany({
+        where: { booking_id: data.id },
+      });
+      for (const p of payments) {
+        await createOrUpdatePaymentTransactions(p.id);
+      }
     } else {
       // --- CREATE MODE ---
       const booking = await prisma.booking.create({
