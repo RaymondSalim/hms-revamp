@@ -97,6 +97,26 @@ export function computeTax(taxableSubtotal: number, taxRate: number): number {
 }
 
 /**
+ * Computes the late fee for an overdue bill given the resolved policy's late
+ * fee type and amount. Pure function (no DB, no side effects).
+ * - "flat": a fixed rupiah amount, returned as-is.
+ * - "percentage": `lateFeeAmount` is a percentage (e.g. 5 means 5%) applied to
+ *   the outstanding balance, rounded to the nearest whole rupiah.
+ * - null/unknown: no late fee configured, returns 0.
+ */
+export function computeLateFee(
+  outstanding: number,
+  lateFeeType: string | null,
+  lateFeeAmount: number
+): number {
+  if (lateFeeType === "flat") return lateFeeAmount;
+  if (lateFeeType === "percentage") {
+    return Math.round((outstanding * lateFeeAmount) / 100);
+  }
+  return 0;
+}
+
+/**
  * Formats a tax rate into a PPN line-item description, trimming a trailing
  * `.00` for whole-number rates (e.g. 11 -> "PPN 11%", 11.5 -> "PPN 11.5%").
  */
