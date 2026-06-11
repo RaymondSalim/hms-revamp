@@ -1,5 +1,9 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@/app/_lib/prisma";
+import {
+  getTemplateOrDefault,
+  renderTemplate,
+} from "@/app/_lib/email/render-template";
 
 const transporter =
   process.env.NODE_ENV === "production"
@@ -35,20 +39,16 @@ export async function sendBillReminderEmail(bill: any) {
   );
   const outstanding = total - paid;
 
-  const subject = `Pengingat Tagihan - ${bill.description}`;
-  const html = `
-    <p>Yth. ${tenant.name},</p>
-    <p>Ini adalah pengingat untuk tagihan Anda:</p>
-    <ul>
-      <li>Kamar: ${room.room_number}</li>
-      <li>Deskripsi: ${bill.description}</li>
-      <li>Total Tagihan: Rp${outstanding.toLocaleString("id-ID")}</li>
-      <li>Jatuh Tempo: ${bill.due_date.toLocaleDateString("id-ID")}</li>
-    </ul>
-    <p>Silakan melakukan pembayaran ke:</p>
-    <p><strong>BCA 5491118777 a.n. Adriana Nugroho</strong></p>
-    <p>Terima kasih.</p>
-  `;
+  const template = await getTemplateOrDefault("BILL_REMINDER");
+  const vars: Record<string, string> = {
+    tenant_name: tenant.name,
+    room_number: String(room.room_number),
+    bill_description: bill.description,
+    outstanding: outstanding.toLocaleString("id-ID"),
+    due_date: bill.due_date.toLocaleDateString("id-ID"),
+  };
+  const subject = renderTemplate(template.subject, vars);
+  const html = renderTemplate(template.body_html, vars);
 
   try {
     await transporter.sendMail({
@@ -85,12 +85,10 @@ export async function sendPasswordResetEmail(
   email: string,
   newPassword: string,
 ) {
-  const subject = "Reset Password - MICASA Suites";
-  const html = `
-    <p>Password Anda telah direset.</p>
-    <p>Password baru Anda: <strong>${newPassword}</strong></p>
-    <p>Silakan login dan ubah password Anda segera.</p>
-  `;
+  const template = await getTemplateOrDefault("PASSWORD_RESET");
+  const vars: Record<string, string> = { new_password: newPassword };
+  const subject = renderTemplate(template.subject, vars);
+  const html = renderTemplate(template.body_html, vars);
 
   try {
     await transporter.sendMail({
