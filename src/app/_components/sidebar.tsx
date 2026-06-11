@@ -44,6 +44,12 @@ const navSections: NavSection[] = [
         permission: "bills.view",
       },
       {
+        label: "Utilitas",
+        href: "/utilities",
+        icon: <BillsIcon />,
+        permission: "bills.manage",
+      },
+      {
         label: "Pembayaran",
         href: "/payments",
         icon: <PaymentsIcon />,
