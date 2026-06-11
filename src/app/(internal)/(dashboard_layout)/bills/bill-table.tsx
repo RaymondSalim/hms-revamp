@@ -495,6 +495,60 @@ export function BillTable({ bills }: Props) {
                   </tr>
                 )}
               </tbody>
+              {expandedBill.bill_item.length > 0 &&
+                (() => {
+                  // PPN (tax) lines are GENERATED items whose description
+                  // starts with "PPN ". Subtotal = everything except tax.
+                  const taxItems = expandedBill.bill_item.filter((i) =>
+                    i.description.startsWith("PPN ")
+                  );
+                  const subtotal = expandedBill.bill_item
+                    .filter((i) => !i.description.startsWith("PPN "))
+                    .reduce((s, i) => s + Number(i.amount), 0);
+                  const total = expandedBill.bill_item.reduce(
+                    (s, i) => s + Number(i.amount),
+                    0
+                  );
+                  return (
+                    <tfoot>
+                      {taxItems.length > 0 && (
+                        <tr
+                          className="border-t"
+                          style={{ borderColor: "var(--color-border)" }}
+                        >
+                          <td
+                            className="px-3 py-2 text-right font-medium"
+                            style={{ color: "var(--color-text-secondary)" }}
+                          >
+                            Subtotal
+                          </td>
+                          <td className="px-3 py-2 font-medium">
+                            {formatCurrency(subtotal)}
+                          </td>
+                          <td colSpan={3} />
+                        </tr>
+                      )}
+                      <tr
+                        className="border-t"
+                        style={{ borderColor: "var(--color-border)" }}
+                      >
+                        <td
+                          className="px-3 py-2 text-right font-semibold"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
+                          Total
+                        </td>
+                        <td
+                          className="px-3 py-2 font-semibold"
+                          style={{ color: "var(--color-text-primary)" }}
+                        >
+                          {formatCurrency(total)}
+                        </td>
+                        <td colSpan={3} />
+                      </tr>
+                    </tfoot>
+                  );
+                })()}
             </table>
           </div>
         )}

@@ -8,7 +8,11 @@ import { bookingSchema } from "@/app/_lib/zod/booking/zod";
 import { getDaysInMonth, lastDayOfMonth, addMonths, startOfMonth } from "date-fns";
 import type { DepositStatus } from "@prisma/client";
 import { getAddonChargeForMonth } from "@/app/_lib/util/billing";
-import { resolveBillingPolicy } from "@/app/_lib/util/billing-policy";
+import {
+  resolveBillingPolicy,
+  computeTax,
+  formatTaxDescription,
+} from "@/app/_lib/util/billing-policy";
 import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
@@ -85,6 +89,9 @@ async function generateBillsForRange(
     // Assign sequential invoice number (skipped when location is unknown)
     await assignInvoiceNumber(bill.id, locationId, dueDate);
 
+    // Running taxable subtotal (excludes deposit, which isn't taxed).
+    let taxableSubtotal = 0;
+
     // Room fee bill item
     await prisma.billItem.create({
       data: {
@@ -94,6 +101,7 @@ async function generateBillsForRange(
         type: "GENERATED",
       },
     });
+    taxableSubtotal += roomFee;
 
     // Deposit bill item (first bill only)
     if (monthIndex === 0 && booking.deposit) {
@@ -124,6 +132,7 @@ async function generateBillsForRange(
           type: "GENERATED",
         },
       });
+      taxableSubtotal += srFee;
     }
 
     // Addon fees (BL-017)
@@ -163,7 +172,21 @@ async function generateBillsForRange(
             type: "GENERATED",
           },
         });
+        taxableSubtotal += addonFee;
       }
+    }
+
+    // PPN tax line item (P2-2). Deposit is excluded from the taxable base.
+    if (policy.tax_rate > 0) {
+      await prisma.billItem.create({
+        data: {
+          bill_id: bill.id,
+          description: formatTaxDescription(policy.tax_rate),
+          amount: computeTax(taxableSubtotal, policy.tax_rate),
+          type: "GENERATED",
+          related_id: { tax: true },
+        },
+      });
     }
 
     bills.push(bill);
@@ -234,11 +257,15 @@ export async function generateNextMonthlyBill(
     where: { id: booking.id },
     include: { rooms: true },
   });
-  await assignInvoiceNumber(
-    bill.id,
-    monthlyBookingWithRoom?.rooms?.location_id ?? null,
-    dueDate
-  );
+  const locationId = monthlyBookingWithRoom?.rooms?.location_id ?? null;
+  await assignInvoiceNumber(bill.id, locationId, dueDate);
+
+  // Resolve the effective billing policy (system -> location -> booking) so we
+  // can apply PPN tax (P2-2).
+  const policy = await resolveBillingPolicy(booking.id, locationId);
+
+  // Running taxable subtotal (no deposit on rolling monthly bills).
+  let taxableSubtotal = 0;
 
   // Full room fee (no proration for subsequent months)
   await prisma.billItem.create({
@@ -249,6 +276,7 @@ export async function generateNextMonthlyBill(
       type: "GENERATED",
     },
   });
+  taxableSubtotal += fee;
 
   // Second resident fee (full)
   if (secondResidentFee && secondResidentFee > 0) {
@@ -260,6 +288,7 @@ export async function generateNextMonthlyBill(
         type: "GENERATED",
       },
     });
+    taxableSubtotal += secondResidentFee;
   }
 
   // Addon fees for this month (BL-017)
@@ -291,7 +320,21 @@ export async function generateNextMonthlyBill(
           type: "GENERATED",
         },
       });
+      taxableSubtotal += charge;
     }
+  }
+
+  // PPN tax line item (P2-2).
+  if (policy.tax_rate > 0) {
+    await prisma.billItem.create({
+      data: {
+        bill_id: bill.id,
+        description: formatTaxDescription(policy.tax_rate),
+        amount: computeTax(taxableSubtotal, policy.tax_rate),
+        type: "GENERATED",
+        related_id: { tax: true },
+      },
+    });
   }
 
   return bill;
@@ -643,15 +686,52 @@ export async function scheduleEndOfStayAction(
       if (finalBill) {
         const ratio = endDay / daysInEndMonth;
 
-        // Prorate GENERATED items (not deposits, not CREATED items)
+        // Prorate GENERATED items (not deposits, not tax, not CREATED items).
+        // Items with related_id (deposit, tax) are skipped here.
         for (const item of finalBill.bill_item) {
           if (item.type !== "GENERATED") continue;
-          if (item.related_id) continue; // Skip deposit items
+          if (item.related_id) continue; // Skip deposit + tax items
 
           const proratedAmount = Math.round(Number(item.amount) * ratio);
           await prisma.billItem.update({
             where: { id: item.id },
             data: { amount: proratedAmount },
+          });
+        }
+
+        // Recompute the PPN tax item from the now-prorated taxable subtotal
+        // (P2-2). Avoids double-prorating; tax = tax_rate% of new base.
+        const taxItem = finalBill.bill_item.find(
+          (i) =>
+            i.type === "GENERATED" &&
+            i.related_id !== null &&
+            typeof i.related_id === "object" &&
+            (i.related_id as { tax?: boolean }).tax === true
+        );
+        if (taxItem) {
+          const updatedItems = await prisma.billItem.findMany({
+            where: { bill_id: finalBill.id },
+          });
+          const newSubtotal = updatedItems
+            .filter(
+              (i) =>
+                i.type === "GENERATED" &&
+                i.related_id === null &&
+                i.description !== "Deposit"
+            )
+            .reduce((s, i) => s + Number(i.amount), 0);
+
+          const booking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            include: { rooms: true },
+          });
+          const policy = await resolveBillingPolicy(
+            bookingId,
+            booking?.rooms?.location_id ?? null
+          );
+          await prisma.billItem.update({
+            where: { id: taxItem.id },
+            data: { amount: computeTax(newSubtotal, policy.tax_rate) },
           });
         }
       }

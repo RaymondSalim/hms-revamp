@@ -85,6 +85,27 @@ export function mergePolicy(
   return merged;
 }
 
+/**
+ * Computes the PPN (Indonesian VAT) tax amount for a given taxable subtotal and
+ * tax rate (as a percentage, e.g. 11 means 11%). The taxable subtotal must
+ * EXCLUDE non-taxable items such as deposits and any pre-existing tax line.
+ * Result is rounded to the nearest whole currency unit (IDR has no cents).
+ */
+export function computeTax(taxableSubtotal: number, taxRate: number): number {
+  if (!taxRate || taxRate <= 0) return 0;
+  return Math.round((taxableSubtotal * taxRate) / 100);
+}
+
+/**
+ * Formats a tax rate into a PPN line-item description, trimming a trailing
+ * `.00` for whole-number rates (e.g. 11 -> "PPN 11%", 11.5 -> "PPN 11.5%").
+ */
+export function formatTaxDescription(taxRate: number): string {
+  // String() already drops a trailing ".00" for whole numbers (11 -> "11"),
+  // while preserving fractional rates (11.5 -> "11.5").
+  return `PPN ${String(taxRate)}%`;
+}
+
 function toNumber(
   value: number | string | { toString(): string } | null | undefined,
   fallback: number
