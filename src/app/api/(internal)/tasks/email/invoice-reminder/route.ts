@@ -2,13 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { sendBillReminderEmail } from "@/app/_lib/mailer";
 import { addDays } from "date-fns";
+import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
 
 export async function GET(request: NextRequest) {
-  // Auth: Bearer token must match CRON_SECRET
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+  if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { generateNextMonthlyBill } from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
+import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
 
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
+async function runMonthlyBilling() {
   const targetDate = new Date();
 
   const bookings = await prisma.booking.findMany({
@@ -39,5 +40,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, results });
+  return { success: true, results };
+}
+
+export async function GET(request: NextRequest) {
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const result = await runMonthlyBilling();
+  return NextResponse.json(result);
+}
+
+export async function POST(request: NextRequest) {
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const result = await runMonthlyBilling();
+  return NextResponse.json(result);
 }
