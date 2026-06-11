@@ -339,6 +339,12 @@ export function BillTable({ bills }: Props) {
               onClick: () => setExpandedBillId(row.original.id),
             },
             {
+              label: "Unduh Invoice",
+              icon: Icons.download,
+              onClick: () =>
+                window.open(`/api/bills/${row.original.id}/pdf`, "_blank"),
+            },
+            {
               label: "Ubah Tanggal",
               icon: Icons.calendar,
               onClick: () => { setDueDateModal(row.original); setDueDateValue(row.original.due_date.split("T")[0]); },
