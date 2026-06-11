@@ -521,6 +521,19 @@ model EmailLogs {
   @@map("emaillogs")
 }
 
+model EmailTemplate {
+  id           Int      @id @default(autoincrement())
+  template_key String   @unique @db.VarChar(64)
+  subject      String   @db.VarChar(255)
+  body_html    String   @db.Text
+  is_enabled   Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("email_templates")
+}
+
 model Event {
   id              Int       @id @default(autoincrement())
   title           String
