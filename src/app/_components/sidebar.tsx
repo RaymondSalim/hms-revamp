@@ -174,6 +174,12 @@ const navSections: NavSection[] = [
         icon: <RolesIcon />,
         permission: "roles.manage",
       },
+      {
+        label: "Template Email",
+        href: "/settings/email-templates",
+        icon: <RolesIcon />,
+        permission: "roles.manage",
+      },
     ],
   },
 ];
