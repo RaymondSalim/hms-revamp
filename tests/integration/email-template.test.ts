@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import "../helpers/mock-next";
 import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 import {
@@ -6,6 +6,17 @@ import {
   getTemplateOrDefault,
 } from "@/app/_lib/email/render-template";
 import { DEFAULT_TEMPLATES } from "@/app/_lib/email/template-keys";
+
+const mockSendMail = vi.fn().mockResolvedValue({ messageId: "test" });
+vi.mock("nodemailer", () => {
+  const createTransport = () => ({
+    sendMail: (...args: any[]) => mockSendMail(...args),
+  });
+  return { default: { createTransport }, createTransport };
+});
+
+// Imported AFTER the mock so the mocked transport is used.
+import { sendBillReminderEmail } from "@/app/_lib/mailer";
 
 describe("renderTemplate", () => {
   it("substitutes a single placeholder", () => {
@@ -70,5 +81,68 @@ describe("getTemplateOrDefault", () => {
     });
     const t = await getTemplateOrDefault("BILL_REMINDER");
     expect(t.subject).toBe(DEFAULT_TEMPLATES.BILL_REMINDER.subject);
+  });
+});
+
+describe("sendBillReminderEmail with templates", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+    await seedTestData();
+    mockSendMail.mockClear();
+  });
+
+  it("renders a stored custom template and passes it to the transport", async () => {
+    await testPrisma.emailTemplate.create({
+      data: {
+        template_key: "BILL_REMINDER",
+        subject: "Tagihan {{tenant_name}}",
+        body_html: "<p>{{room_number}} owes Rp{{outstanding}}</p>",
+        is_enabled: true,
+      },
+    });
+
+    const bill = {
+      description: "Tagihan Juni 2026",
+      due_date: new Date("2026-06-30"),
+      bookings: {
+        tenants: { name: "Budi", email: "budi@test.com" },
+        rooms: { room_number: "A1" },
+      },
+      bill_item: [{ amount: 1000000 }],
+      paymentBills: [{ amount: 250000 }],
+    };
+
+    await sendBillReminderEmail(bill as any);
+
+    expect(mockSendMail).toHaveBeenCalledTimes(1);
+    const arg = mockSendMail.mock.calls[0][0];
+    expect(arg.to).toBe("budi@test.com");
+    expect(arg.subject).toBe("Tagihan Budi");
+    // outstanding = 1,000,000 - 250,000 = 750,000 formatted id-ID
+    expect(arg.html).toContain("A1 owes Rp750.000");
+
+    const logs = await testPrisma.emailLogs.findMany();
+    expect(logs).toHaveLength(1);
+    expect(logs[0].status).toBe("SUCCESS");
+  });
+
+  it("uses the hardcoded default body (with bank account) when no row exists", async () => {
+    const bill = {
+      description: "Tagihan Juni 2026",
+      due_date: new Date("2026-06-30"),
+      bookings: {
+        tenants: { name: "Budi", email: "budi@test.com" },
+        rooms: { room_number: "A1" },
+      },
+      bill_item: [{ amount: 1000000 }],
+      paymentBills: [],
+    };
+
+    await sendBillReminderEmail(bill as any);
+
+    const arg = mockSendMail.mock.calls[0][0];
+    expect(arg.html).toContain("BCA 5491118777 a.n. Adriana Nugroho");
+    expect(arg.html).toContain("Budi");
+    expect(arg.html).toContain("Rp1.000.000");
   });
 });
