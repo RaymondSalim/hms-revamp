@@ -131,7 +131,8 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
     });
   }
 
-  // Create "Kelebihan Bayar" INCOME transaction if there's overpayment
+  // Create "Kelebihan Bayar" CREDIT transaction if there's overpayment
+  // Overpayment is a liability (held for / owed to the tenant), not revenue.
   if (excessTotal > 0) {
     await prisma.transaction.create({
       data: {
@@ -139,7 +140,7 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
         description: "Kelebihan Bayar",
         date: payment.payment_date,
         category: "Kelebihan Bayar",
-        type: "INCOME",
+        type: "CREDIT",
         location_id: locationId,
         related_id: { payment_id: paymentId },
       },

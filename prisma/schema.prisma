@@ -557,6 +557,7 @@ model Deposit {
 enum TransactionType {
   INCOME
   EXPENSE
+  CREDIT
 }
 
 enum BillType {

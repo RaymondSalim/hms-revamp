@@ -18,7 +18,7 @@ export interface Transaction {
   description: string;
   date: string;
   category: string | null;
-  type: "INCOME" | "EXPENSE";
+  type: "INCOME" | "EXPENSE" | "CREDIT";
   location_id: number;
 }
 
@@ -182,7 +182,7 @@ export function SummaryClient({ initialData, locationId }: SummaryClientProps) {
       }
       if (t.type === "INCOME") {
         grouped[key].income += Number(t.amount);
-      } else {
+      } else if (t.type === "EXPENSE") {
         grouped[key].expense += Number(t.amount);
       }
     }
@@ -397,7 +397,12 @@ export function SummaryClient({ initialData, locationId }: SummaryClientProps) {
                     <td
                       className="py-2.5 px-3 text-right font-medium"
                       style={{
-                        color: t.type === "INCOME" ? "#16A34A" : "#DC2626",
+                        color:
+                          t.type === "INCOME"
+                            ? "#16A34A"
+                            : t.type === "CREDIT"
+                              ? "#D97706"
+                              : "#DC2626",
                       }}
                     >
                       {t.type === "EXPENSE" ? "-" : ""}
@@ -442,17 +447,25 @@ function SummaryCard({
   );
 }
 
-function TypeBadge({ type }: { type: "INCOME" | "EXPENSE" }) {
-  const isIncome = type === "INCOME";
+function TypeBadge({ type }: { type: "INCOME" | "EXPENSE" | "CREDIT" }) {
+  const styles: Record<
+    "INCOME" | "EXPENSE" | "CREDIT",
+    { bg: string; color: string; label: string }
+  > = {
+    INCOME: { bg: "#DEF7EC", color: "#03543F", label: "Pemasukan" },
+    EXPENSE: { bg: "#FDE8E8", color: "#9B1C1C", label: "Pengeluaran" },
+    CREDIT: { bg: "#FEF3C7", color: "#92400E", label: "Kelebihan Bayar" },
+  };
+  const s = styles[type];
   return (
     <span
       className="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
       style={{
-        backgroundColor: isIncome ? "#DEF7EC" : "#FDE8E8",
-        color: isIncome ? "#03543F" : "#9B1C1C",
+        backgroundColor: s.bg,
+        color: s.color,
       }}
     >
-      {isIncome ? "Pemasukan" : "Pengeluaran"}
+      {s.label}
     </span>
   );
 }

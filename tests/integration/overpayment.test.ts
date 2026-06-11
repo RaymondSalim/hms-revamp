@@ -90,7 +90,7 @@ describe("Overpayment Handling", () => {
 
     expect(excessTx).toBeDefined();
     expect(Number(excessTx!.amount)).toBe(500000);
-    expect(excessTx!.type).toBe("INCOME");
+    expect(excessTx!.type).toBe("CREDIT");
     expect(excessTx!.category).toBe("Kelebihan Bayar");
   });
 });
