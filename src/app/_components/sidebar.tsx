@@ -156,6 +156,12 @@ const navSections: NavSection[] = [
         icon: <RolesIcon />,
         permission: "roles.manage",
       },
+      {
+        label: "Kebijakan Tagihan",
+        href: "/settings/billing",
+        icon: <RolesIcon />,
+        permission: "roles.manage",
+      },
     ],
   },
 ];

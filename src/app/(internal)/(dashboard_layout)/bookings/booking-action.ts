@@ -8,6 +8,7 @@ import { bookingSchema } from "@/app/_lib/zod/booking/zod";
 import { getDaysInMonth, lastDayOfMonth, addMonths, startOfMonth } from "date-fns";
 import type { DepositStatus } from "@prisma/client";
 import { getAddonChargeForMonth } from "@/app/_lib/util/billing";
+import { resolveBillingPolicy } from "@/app/_lib/util/billing-policy";
 import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
@@ -45,6 +46,15 @@ async function generateBillsForRange(
     ? Number(booking.second_resident_fee)
     : null;
 
+  // Resolve the effective billing policy once (system -> location -> booking).
+  const bookingWithRoom = await prisma.booking.findUnique({
+    where: { id: booking.id },
+    include: { rooms: true },
+  });
+  const locationId = bookingWithRoom?.rooms?.location_id ?? null;
+  const policy = await resolveBillingPolicy(booking.id, locationId);
+  const shouldProrate = policy.proration_method !== "none";
+
   let current = startOfMonth(startDate);
   let monthIndex = 0;
   const bills = [];
@@ -57,7 +67,7 @@ async function generateBillsForRange(
 
     // Calculate room fee (BL-012: due_date = last day of billing month)
     let roomFee = fee;
-    if (monthIndex === 0 && startDate.getDate() !== 1) {
+    if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
       // Prorate first month: (daysInMonth - startDay + 1) / daysInMonth * fee
       const startDay = startDate.getDate();
       roomFee = ((daysInMonth - startDay + 1) / daysInMonth) * fee;
@@ -96,7 +106,7 @@ async function generateBillsForRange(
     // Second resident fee
     if (secondResidentFee && secondResidentFee > 0) {
       let srFee = secondResidentFee;
-      if (monthIndex === 0 && startDate.getDate() !== 1) {
+      if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
         const startDay = startDate.getDate();
         srFee =
           ((daysInMonth - startDay + 1) / daysInMonth) * secondResidentFee;
@@ -136,7 +146,7 @@ async function generateBillsForRange(
       if (charge > 0) {
         // Prorate addon on first booking month if start day is not 1st
         let addonFee = charge;
-        if (monthIndex === 0 && startDate.getDate() !== 1) {
+        if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
           const startDay = startDate.getDate();
           addonFee = ((daysInMonth - startDay + 1) / daysInMonth) * charge;
         }
@@ -574,9 +584,14 @@ export async function scheduleEndOfStayAction(
       data: { end_date: endDate, is_rolling: false },
     });
 
-    // 2. Delete bills with due_date > endDate
+    // 2. Delete bills due AFTER the end month. We must keep the end-month bill
+    // so step 2b can prorate it (the end-month bill's due_date is the last day
+    // of the month, which is > endDate when ending mid-month).
     await prisma.bill.deleteMany({
-      where: { booking_id: bookingId, due_date: { gt: endDate } },
+      where: {
+        booking_id: bookingId,
+        due_date: { gt: lastDayOfMonth(endDate) },
+      },
     });
 
     // 2b. Prorate the final month's bill if ending mid-month

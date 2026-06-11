@@ -83,6 +83,24 @@ export async function seedTestData() {
     create: { id: 2, room_number: "102", room_type_id: 1, status_id: 1, location_id: 1 },
   });
 
+  // Seed the system-default BillingPolicy (location_id NULL, booking_id NULL)
+  // idempotently. Resolution does not require this row, but seeding it mirrors
+  // the production setup so tests exercise the cascade realistically.
+  const existingSystemPolicy = await testPrisma.billingPolicy.findFirst({
+    where: { location_id: null, booking_id: null },
+  });
+  if (!existingSystemPolicy) {
+    await testPrisma.billingPolicy.create({
+      data: {
+        grace_period_days: 0,
+        billing_cycle_day: 0,
+        proration_method: "daily",
+        reminder_days_before: 7,
+        tax_rate: 0,
+      },
+    });
+  }
+
   // Advance sequences past the explicit IDs we inserted so that
   // subsequent create() calls without explicit IDs don't collide
   const tables = [

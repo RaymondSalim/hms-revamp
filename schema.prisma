@@ -34,6 +34,7 @@ model Booking {
   guests          Guest[]
   payments        Payment[]
   penalties       Penalty[]
+  billingPolicies BillingPolicy[]
 
   @@map("bookings")
 }
@@ -424,8 +425,33 @@ model Location {
   rooms            Room[]
   RoomTypeDuration RoomTypeDuration[]
   transactions     Transaction[]
+  billingPolicies  BillingPolicy[]
 
   @@map("locations")
+}
+
+model BillingPolicy {
+  id                          Int      @id @default(autoincrement())
+  location_id                 Int?
+  booking_id                  Int?
+  late_fee_type               String?  @db.VarChar(20)
+  late_fee_amount             Decimal? @db.Decimal(10, 2)
+  grace_period_days           Int?     @default(0)
+  billing_cycle_day           Int?     @default(0)
+  proration_method            String?  @db.VarChar(20)
+  rate_escalation_percentage  Decimal? @db.Decimal(5, 2)
+  rate_escalation_frequency   Int?
+  tax_rate                    Decimal? @db.Decimal(5, 2)
+  reminder_days_before        Int?     @default(7)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  location Location? @relation(fields: [location_id], references: [id])
+  booking  Booking?  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+
+  @@unique([location_id, booking_id])
+  @@map("billing_policies")
 }
 
 model Tenant {
