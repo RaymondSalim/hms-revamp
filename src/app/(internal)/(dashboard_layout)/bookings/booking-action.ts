@@ -13,6 +13,7 @@ import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
+import { computeExpectedStatus } from "@/app/_lib/util/booking-status";
 
 // --- Shared bill generation helper types ---
 interface BillGenerationBooking {
@@ -492,6 +493,18 @@ export async function upsertBookingAction(data: {
       }
     } else {
       // --- CREATE MODE ---
+      // Derive status from dates: start_date <= today -> ACTIVE, else PENDING
+      // (computeExpectedStatus also returns COMPLETED if a past end_date is set).
+      const derivedStatus =
+        computeExpectedStatus(
+          {
+            status_id: data.status_id,
+            start_date: startDate,
+            end_date: endDate,
+          },
+          new Date()
+        ) ?? data.status_id;
+
       const booking = await prisma.booking.create({
         data: {
           room_id: data.room_id,
@@ -501,7 +514,7 @@ export async function upsertBookingAction(data: {
           fee: data.fee,
           tenant_id: data.tenant_id,
           is_rolling: data.is_rolling,
-          status_id: data.status_id,
+          status_id: derivedStatus,
           second_resident_fee: data.second_resident_fee ?? null,
         },
       });
@@ -676,7 +689,7 @@ export async function checkInOutAction(data: {
     if (data.event_type === "CHECK_OUT") {
       await prisma.booking.update({
         where: { id: data.booking_id },
-        data: { end_date: data.event_date, is_rolling: false },
+        data: { end_date: data.event_date, is_rolling: false, status_id: 3 },
       });
 
       // Handle deposit status transition with proper validation & transactions
