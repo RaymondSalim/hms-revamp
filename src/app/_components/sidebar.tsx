@@ -123,6 +123,12 @@ const navSections: NavSection[] = [
         permission: "financials.view",
       },
       {
+        label: "Umur Piutang",
+        href: "/financials/aging",
+        icon: <FinancialsIcon />,
+        permission: "financials.view",
+      },
+      {
         label: "Ekspor",
         href: "/financials/export",
         icon: <ExportIcon />,
