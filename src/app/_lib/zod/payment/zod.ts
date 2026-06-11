@@ -6,6 +6,7 @@ export const paymentSchema = z.object({
   payment_date: z.coerce.date(),
   status_id: z.number().optional(),
   allocation_mode: z.enum(["auto", "manual"]),
+  payment_method: z.enum(["CASH", "BANK_TRANSFER", "EWALLET"]).optional(),
   manual_allocations: z.array(z.object({
     bill_id: z.number(),
     amount: z.number().min(0),

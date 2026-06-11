@@ -196,6 +196,7 @@ export async function upsertPaymentAction(data: {
   payment_proof?: string; // base64
   payment_proof_name?: string;
   allocation_mode: "auto" | "manual";
+  payment_method?: "CASH" | "BANK_TRANSFER" | "EWALLET";
   manual_allocations?: Array<{ bill_id: number; amount: number }>;
 }) {
   const { authorized } = await checkPermission("payments.manage");
@@ -208,6 +209,7 @@ export async function upsertPaymentAction(data: {
     payment_date: data.payment_date,
     status_id: data.status_id,
     allocation_mode: data.allocation_mode,
+    payment_method: data.payment_method,
     manual_allocations: data.manual_allocations,
   });
 
@@ -257,6 +259,7 @@ export async function upsertPaymentAction(data: {
         payment_date: new Date(data.payment_date),
         status_id: data.status_id ?? 1,
         allocation_mode: data.allocation_mode,
+        payment_method: data.payment_method ?? null,
         ...(proofKey && { payment_proof: proofKey }),
       },
     });
@@ -271,6 +274,7 @@ export async function upsertPaymentAction(data: {
         status_id: data.status_id ?? 1,
         payment_proof: proofKey,
         allocation_mode: data.allocation_mode,
+        payment_method: data.payment_method ?? null,
       },
     });
     paymentId = payment.id;

@@ -20,6 +20,7 @@ interface PaymentRow {
   payment_date: string;
   payment_proof: string | null;
   status_id: number | null;
+  payment_method?: "CASH" | "BANK_TRANSFER" | "EWALLET" | null;
   bookings: {
     id: number;
     tenants: { id: string; name: string } | null;
@@ -108,6 +109,9 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
   const [formProofBase64, setFormProofBase64] = useState<string>("");
   const [formProofName, setFormProofName] = useState<string>("");
   const [formAllocMode, setFormAllocMode] = useState<"auto" | "manual">("auto");
+  const [formPaymentMethod, setFormPaymentMethod] = useState<
+    "CASH" | "BANK_TRANSFER" | "EWALLET" | ""
+  >("");
   const [manualAllocations, setManualAllocations] = useState<
     Array<{ bill_id: number; amount: string }>
   >([]);
@@ -121,6 +125,7 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
     setFormProofBase64("");
     setFormProofName("");
     setFormAllocMode("auto");
+    setFormPaymentMethod("");
     setManualAllocations([]);
     setAllocPreview([]);
   };
@@ -140,6 +145,7 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
     setFormProofBase64("");
     setFormProofName("");
     setFormAllocMode("auto");
+    setFormPaymentMethod(row.payment_method ?? "");
     setManualAllocations([]);
     setAllocPreview([]);
     setModalOpen(true);
@@ -205,6 +211,7 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
       payment_proof: formProofBase64 || undefined,
       payment_proof_name: formProofName || undefined,
       allocation_mode: formAllocMode,
+      payment_method: formPaymentMethod || undefined,
       manual_allocations:
         formAllocMode === "manual"
           ? manualAllocations
@@ -290,6 +297,23 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
           status={row.original.paymentstatuses?.status ?? "PENDING"}
         />
       ),
+    },
+    {
+      id: "payment_method",
+      header: "Metode",
+      accessorFn: (row) => row.payment_method ?? "-",
+      cell: ({ row }) => {
+        const m = row.original.payment_method;
+        const label =
+          m === "CASH"
+            ? "Tunai"
+            : m === "BANK_TRANSFER"
+              ? "Transfer Bank"
+              : m === "EWALLET"
+                ? "E-Wallet"
+                : "-";
+        return <span>{label}</span>;
+      },
     },
     {
       id: "proof",
@@ -465,6 +489,35 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
                   {s.status}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Payment Method */}
+          <div>
+            <label
+              className="block text-sm font-medium mb-1"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Metode Pembayaran
+            </label>
+            <select
+              value={formPaymentMethod}
+              onChange={(e) =>
+                setFormPaymentMethod(
+                  e.target.value as "CASH" | "BANK_TRANSFER" | "EWALLET" | ""
+                )
+              }
+              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
+              style={{
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-bg-card)",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              <option value="">Pilih metode...</option>
+              <option value="CASH">Tunai</option>
+              <option value="BANK_TRANSFER">Transfer Bank</option>
+              <option value="EWALLET">E-Wallet</option>
             </select>
           </div>
 
