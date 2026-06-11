@@ -40,6 +40,49 @@ export async function getRoomStats(locationId: number) {
   return { total: rooms.length, available, occupied, maintenance };
 }
 
+// P3-2: Occupancy rate at a point in time.
+// "Occupied on asOf" = a room in the location with at least one ACTIVE booking
+// (status_id = 2) whose start_date <= asOf and (end_date is null OR end_date >= asOf).
+// We count only ACTIVE bookings: this is the cleanest "currently occupied"
+// definition. PENDING (not yet started) and CANCELLED/COMPLETED bookings are
+// excluded. start_date/end_date are @db.Date (midnight UTC), so direct Prisma
+// lte/gte comparisons are TZ-safe under TZ=UTC.
+export async function getOccupancyRate(locationId: number, asOf?: Date) {
+  const now = asOf ?? new Date();
+
+  const rooms = await prisma.room.findMany({
+    where: { location_id: locationId },
+    select: { id: true },
+  });
+  const totalRooms = rooms.length;
+  const roomIds = new Set(rooms.map((r) => r.id));
+
+  if (totalRooms === 0) {
+    return { totalRooms: 0, occupiedRooms: 0, rate: 0 };
+  }
+
+  const bookings = await prisma.booking.findMany({
+    where: {
+      status_id: 2, // ACTIVE
+      start_date: { lte: now },
+      OR: [{ end_date: null }, { end_date: { gte: now } }],
+      rooms: { location_id: locationId },
+    },
+    select: { room_id: true },
+  });
+
+  const occupiedRoomIds = new Set<number>();
+  for (const b of bookings) {
+    if (b.room_id != null && roomIds.has(b.room_id)) {
+      occupiedRoomIds.add(b.room_id);
+    }
+  }
+  const occupiedRooms = occupiedRoomIds.size;
+  const rate = Math.round((occupiedRooms / totalRooms) * 1000) / 10;
+
+  return { totalRooms, occupiedRooms, rate };
+}
+
 export async function getRecentPayments(locationId: number, limit = 5) {
   return prisma.payment.findMany({
     where: { bookings: { rooms: { location_id: locationId } } },

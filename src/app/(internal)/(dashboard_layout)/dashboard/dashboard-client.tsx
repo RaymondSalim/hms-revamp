@@ -12,6 +12,12 @@ export interface RoomStats {
   maintenance: number;
 }
 
+export interface Occupancy {
+  totalRooms: number;
+  occupiedRooms: number;
+  rate: number;
+}
+
 export interface RecentPayment {
   id: number;
   amount: string;
@@ -45,6 +51,7 @@ export interface UpcomingEvent {
 interface DashboardClientProps {
   checkInOutCounts: CheckInOutCounts;
   roomStats: RoomStats;
+  occupancy: Occupancy;
   recentPayments: RecentPayment[];
   outstandingBills: OutstandingBill[];
   upcomingEvents: UpcomingEvent[];
@@ -65,6 +72,7 @@ function formatDate(dateStr: string) {
 export function DashboardClient({
   checkInOutCounts,
   roomStats,
+  occupancy,
   recentPayments,
   outstandingBills,
   upcomingEvents,
@@ -112,6 +120,16 @@ export function DashboardClient({
           label="Kamar Terisi"
           value={roomStats.occupied}
           subtitle={`${roomStats.maintenance} maintenance`}
+          icon={
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Tingkat Hunian"
+          value={`${occupancy.rate}%`}
+          subtitle={`${occupancy.occupiedRooms} dari ${occupancy.totalRooms} kamar terisi`}
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -332,7 +350,7 @@ function StatCard({
   icon,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   subtitle?: string;
   icon: React.ReactNode;
 }) {

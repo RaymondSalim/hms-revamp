@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import {
   getCheckInOutCounts,
   getRoomStats,
+  getOccupancyRate,
   getRecentPayments,
   getOutstandingBills,
   getUpcomingEvents,
@@ -18,10 +19,11 @@ export default async function DashboardPage() {
   const locationCookie = cookieStore.get("selectedLocationId");
   const locationId = locationCookie ? parseInt(locationCookie.value, 10) : 1;
 
-  const [checkInOutCounts, roomStats, recentPayments, outstandingBills, upcomingEvents] =
+  const [checkInOutCounts, roomStats, occupancy, recentPayments, outstandingBills, upcomingEvents] =
     await Promise.all([
       getCheckInOutCounts(locationId),
       getRoomStats(locationId),
+      getOccupancyRate(locationId),
       getRecentPayments(locationId),
       getOutstandingBills(locationId),
       getUpcomingEvents(),
@@ -31,6 +33,7 @@ export default async function DashboardPage() {
     <DashboardClient
       checkInOutCounts={checkInOutCounts}
       roomStats={roomStats}
+      occupancy={occupancy}
       recentPayments={serializeForClient(recentPayments) as unknown as RecentPayment[]}
       outstandingBills={serializeForClient(outstandingBills) as unknown as OutstandingBill[]}
       upcomingEvents={serializeForClient(upcomingEvents) as unknown as UpcomingEvent[]}
