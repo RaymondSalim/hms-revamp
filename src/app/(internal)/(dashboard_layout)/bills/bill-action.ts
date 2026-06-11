@@ -3,6 +3,7 @@
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
+import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
 
 // BL-003: Payment Auto-Allocation Simulation
 export async function simulateUnpaidBillPaymentAction(
@@ -137,6 +138,17 @@ export async function createBillAction(data: {
       due_date: new Date(data.due_date),
     },
   });
+
+  // Assign sequential invoice number (skipped when location is unknown)
+  const bookingWithRoom = await prisma.booking.findUnique({
+    where: { id: data.booking_id },
+    include: { rooms: true },
+  });
+  await assignInvoiceNumber(
+    bill.id,
+    bookingWithRoom?.rooms?.location_id ?? null,
+    new Date(data.due_date)
+  );
 
   for (const item of data.items) {
     await prisma.billItem.create({

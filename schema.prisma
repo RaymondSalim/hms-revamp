@@ -138,10 +138,11 @@ model Log {
 }
 
 model Bill {
-  id          Int      @id @default(autoincrement())
-  booking_id  Int
-  description String   @db.VarChar(255)
-  due_date    DateTime @db.Date
+  id             Int      @id @default(autoincrement())
+  booking_id     Int
+  description    String   @db.VarChar(255)
+  due_date       DateTime @db.Date
+  invoice_number String?  @unique @db.VarChar(50)
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now()) @updatedAt
@@ -415,9 +416,10 @@ model Penalty {
 }
 
 model Location {
-  id      Int    @id @default(autoincrement())
-  name    String @db.VarChar(255)
-  address String @db.VarChar(255)
+  id      Int     @id @default(autoincrement())
+  name    String  @db.VarChar(255)
+  address String  @db.VarChar(255)
+  code    String? @db.VarChar(10)
 
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @default(now()) @updatedAt
@@ -580,6 +582,17 @@ model Deposit {
 
   @@unique([booking_id])
   @@map("deposits")
+}
+
+model InvoiceSequence {
+  id          Int @id @default(autoincrement())
+  location_id Int
+  year        Int
+  month       Int
+  last_number Int @default(0)
+
+  @@unique([location_id, year, month])
+  @@map("invoice_sequences")
 }
 
 enum TransactionType {

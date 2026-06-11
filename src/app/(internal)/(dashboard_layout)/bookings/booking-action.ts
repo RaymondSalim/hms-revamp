@@ -14,6 +14,7 @@ import { logAudit } from "@/app/_lib/audit";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 import { computeExpectedStatus } from "@/app/_lib/util/booking-status";
+import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
 
 // --- Shared bill generation helper types ---
 interface BillGenerationBooking {
@@ -80,6 +81,9 @@ async function generateBillsForRange(
     const bill = await prisma.bill.create({
       data: { booking_id: booking.id, description, due_date: dueDate },
     });
+
+    // Assign sequential invoice number (skipped when location is unknown)
+    await assignInvoiceNumber(bill.id, locationId, dueDate);
 
     // Room fee bill item
     await prisma.billItem.create({
@@ -224,6 +228,17 @@ export async function generateNextMonthlyBill(
   const bill = await prisma.bill.create({
     data: { booking_id: booking.id, description, due_date: dueDate },
   });
+
+  // Assign sequential invoice number (skipped when location is unknown)
+  const monthlyBookingWithRoom = await prisma.booking.findUnique({
+    where: { id: booking.id },
+    include: { rooms: true },
+  });
+  await assignInvoiceNumber(
+    bill.id,
+    monthlyBookingWithRoom?.rooms?.location_id ?? null,
+    dueDate
+  );
 
   // Full room fee (no proration for subsequent months)
   await prisma.billItem.create({

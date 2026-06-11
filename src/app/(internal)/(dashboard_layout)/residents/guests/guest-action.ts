@@ -7,6 +7,7 @@ import { guestSchema, guestStaySchema } from "@/app/_lib/zod/guest/zod";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 import { splitGuestStayByMonth } from "@/app/_lib/util/guest-billing";
 import { checkPermission } from "@/app/_lib/rbac";
+import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
 
 export async function upsertGuestAction(data: { id?: number; name: string; email?: string; phone?: string; booking_id: number }) {
   const { authorized } = await checkPermission("guests.manage");
@@ -44,8 +45,10 @@ export async function upsertGuestStayAction(data: { id?: number; guest_id: numbe
   }
 
   // Get guest's booking
-  const guest = await prisma.guest.findUnique({ where: { id: data.guest_id }, include: { booking: true } });
+  const guest = await prisma.guest.findUnique({ where: { id: data.guest_id }, include: { booking: { include: { rooms: true } } } });
   if (!guest) return { success: false as const, error: "Guest not found" };
+
+  const guestLocationId = guest.booking.rooms?.location_id ?? null;
 
   // Delete old bill items for this guest stay (if editing)
   if (data.id) {
@@ -70,6 +73,8 @@ export async function upsertGuestStayAction(data: { id?: number; guest_id: numbe
       bill = await prisma.bill.create({
         data: { booking_id: guest.booking_id, description, due_date: dueDate },
       });
+      // Assign sequential invoice number (skipped when location is unknown)
+      await assignInvoiceNumber(bill.id, guestLocationId, dueDate);
     }
 
     // Create bill item

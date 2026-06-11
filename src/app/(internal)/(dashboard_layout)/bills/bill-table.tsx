@@ -38,6 +38,7 @@ interface BillRow {
   booking_id: number;
   description: string;
   due_date: string;
+  invoice_number: string | null;
   bill_item: BillItemRow[];
   paymentBills: PaymentBillRow[];
   bookings: {
@@ -220,6 +221,19 @@ export function BillTable({ bills }: Props) {
   };
 
   const columns: ColumnDef<BillRow, unknown>[] = [
+    {
+      id: "invoice_number",
+      header: "No. Invoice",
+      accessorFn: (row) => row.invoice_number ?? "-",
+      cell: ({ row }) => (
+        <span
+          className="text-sm font-mono"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          {row.original.invoice_number ?? "-"}
+        </span>
+      ),
+    },
     {
       id: "room_tenant",
       header: "Kamar / Penyewa",
