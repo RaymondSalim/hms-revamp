@@ -146,7 +146,7 @@ export default function SetupForm() {
 
           <FileUpload
             accept="image/*"
-            maxSize={2 * 1024 * 1024}
+            maxSize={1024 * 1024}
             label="Logo Perusahaan"
             onFileSelect={(base64, fileName) => {
               setCompanyImage(base64);

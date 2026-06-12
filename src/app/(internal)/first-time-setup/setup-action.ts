@@ -3,6 +3,7 @@
 import { upsertSetting } from "@/app/_db/settings";
 import { createLocation } from "@/app/_db/locations";
 import { setupSchema } from "@/app/_lib/zod/settings/zod";
+import { validateImageDataUrl } from "@/app/_lib/util/image-data-url";
 
 export async function completeSetupAction(formData: {
   companyName: string;
@@ -14,15 +15,21 @@ export async function completeSetupAction(formData: {
   const parsed = setupSchema.safeParse(formData);
   if (!parsed.success) return { success: false as const, error: parsed.error.flatten() };
 
-  let imageKey = "";
+  let companyImage = "";
 
-  if (formData.companyImage && formData.companyImageName) {
-    // For now, store the image path — S3 upload will be wired in Phase 9
-    imageKey = `company/${new Date().toISOString()}/${formData.companyImageName}`;
+  if (formData.companyImage) {
+    const validation = validateImageDataUrl(formData.companyImage);
+    if (!validation.ok) {
+      return {
+        success: false as const,
+        error: { fieldErrors: { companyImage: [validation.error] }, formErrors: [] },
+      };
+    }
+    companyImage = formData.companyImage;
   }
 
   await upsertSetting("COMPANY_NAME", formData.companyName);
-  await upsertSetting("COMPANY_IMAGE", imageKey);
+  await upsertSetting("COMPANY_IMAGE", companyImage);
   await createLocation({ name: formData.locationName, address: formData.locationAddress });
   await upsertSetting("APP_SETUP", "true");
 
