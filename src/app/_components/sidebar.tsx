@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { logoutAction } from "@/app/_lib/auth-actions";
 
 interface SidebarProps {
   userName: string;
   userRole: string;
+  companyName: string;
+  companyImage: string;
   permissions: string[];
 }
 
@@ -101,10 +104,6 @@ const navSections: NavSection[] = [
         icon: <DurationsIcon />,
         permission: "durations.view",
       },
-    ],
-  },
-  {
-    items: [
       {
         label: "Add-on",
         href: "/addons",
@@ -151,6 +150,12 @@ const navSections: NavSection[] = [
     title: "Pengaturan",
     items: [
       {
+        label: "Profil Perusahaan",
+        href: "/settings/company",
+        icon: <CompanyIcon />,
+        permission: "roles.manage",
+      },
+      {
         label: "Lokasi",
         href: "/locations",
         icon: <LocationsIcon />,
@@ -184,9 +189,16 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar({ userName, userRole, permissions }: SidebarProps) {
+export function Sidebar({
+  userName,
+  userRole,
+  companyName,
+  companyImage,
+  permissions,
+}: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isLoggingOut, startLogout] = useTransition();
   const permSet = new Set(permissions);
 
   const filteredSections = navSections
@@ -228,20 +240,29 @@ export function Sidebar({ userName, userRole, permissions }: SidebarProps) {
       >
         {/* Logo area */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-            style={{ backgroundColor: "var(--color-accent)" }}
-          >
-            H
-          </div>
+          {companyImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={companyImage}
+              alt={companyName}
+              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+            />
+          ) : (
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+              style={{ backgroundColor: "var(--color-accent)" }}
+            >
+              {companyName.charAt(0).toUpperCase()}
+            </div>
+          )}
           <span
-            className="text-lg font-semibold tracking-tight"
+            className="text-lg font-semibold tracking-tight truncate"
             style={{
               color: "var(--color-text-sidebar)",
               fontFamily: "var(--font-display), serif",
             }}
           >
-            HMS
+            {companyName}
           </span>
         </div>
 
@@ -301,11 +322,9 @@ export function Sidebar({ userName, userRole, permissions }: SidebarProps) {
         </nav>
 
         {/* User section at bottom */}
-        <div
-          className="px-4 py-4 border-t border-white/10 flex items-center gap-3"
-        >
+        <div className="px-4 py-4 border-t border-white/10 flex items-center gap-3">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
             style={{
               backgroundColor: "var(--color-bg-sidebar-hover)",
               color: "var(--color-text-sidebar)",
@@ -330,6 +349,24 @@ export function Sidebar({ userName, userRole, permissions }: SidebarProps) {
               {userRole}
             </span>
           </div>
+          <button
+            onClick={() => startLogout(() => logoutAction())}
+            disabled={isLoggingOut}
+            title="Keluar"
+            aria-label="Keluar"
+            className="p-2 rounded-lg flex-shrink-0 transition-colors disabled:opacity-50"
+            style={{ color: "var(--color-text-sidebar-muted)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-bg-sidebar-hover)";
+              e.currentTarget.style.color = "var(--color-text-sidebar)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "var(--color-text-sidebar-muted)";
+            }}
+          >
+            <LogoutIcon />
+          </button>
         </div>
       </aside>
     </>
@@ -477,6 +514,22 @@ function RolesIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
       <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function CompanyIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v14a1 1 0 01-1 1h-3v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3H5a1 1 0 01-1-1V4zm3 1h2v2H7V5zm0 4h2v2H7V9zm4-4h2v2h-2V5zm0 4h2v2h-2V9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+      <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
     </svg>
   );
 }
