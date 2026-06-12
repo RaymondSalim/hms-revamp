@@ -2,6 +2,7 @@
 
 import bcrypt from "bcrypt";
 import { getUserByEmail, updateUser } from "@/app/_db/site-users";
+import { sendPasswordResetEmail } from "@/app/_lib/mailer";
 import crypto from "crypto";
 
 export async function resetPasswordAction(formData: { email: string }) {
@@ -13,7 +14,7 @@ export async function resetPasswordAction(formData: { email: string }) {
   const hashed = await bcrypt.hash(newPassword, 10);
   await updateUser(user.id, { password: hashed, shouldReset: true });
 
-  // TODO: Send email with new password (Phase 20)
-  // For now, just update the password
+  await sendPasswordResetEmail(user.email, newPassword);
+
   return { success: true as const };
 }
