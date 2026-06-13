@@ -7,12 +7,14 @@ declare module "next-auth" {
       id: string;
       role_id: number;
       shouldReset: boolean;
+      location_ids: number[];
     } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
     role_id: number | null;
     shouldReset: boolean;
+    location_ids: number[];
   }
 }
 
@@ -21,5 +23,6 @@ declare module "next-auth/jwt" {
     id: string;
     role_id: number;
     shouldReset: boolean;
+    location_ids: number[];
   }
 }

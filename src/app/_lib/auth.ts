@@ -28,6 +28,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.email,
           role_id: user.role_id,
           shouldReset: user.shouldReset,
+          location_ids: user.userLocations.map((ul) => ul.location_id),
         };
       },
     }),
@@ -39,11 +40,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id!;
         token.role_id = (user as any).role_id;
         token.shouldReset = (user as any).shouldReset;
+        token.location_ids = (user as any).location_ids ?? [];
       } else if (token.id) {
         const dbUser = await getUserById(token.id as string);
         if (dbUser) {
           token.role_id = dbUser.role_id ?? 0;
           token.shouldReset = dbUser.shouldReset;
+          token.location_ids = dbUser.userLocations.map((ul) => ul.location_id);
         }
       }
       return token;
@@ -53,6 +56,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.role_id = token.role_id as number;
         session.user.shouldReset = token.shouldReset as boolean;
+        session.user.location_ids = (token.location_ids as number[]) ?? [];
       }
       return session;
     },
