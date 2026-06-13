@@ -13,6 +13,7 @@ interface SiteUser {
   email: string;
   role_id: number | null;
   roles: { id: number; name: string } | null;
+  userLocations: { user_id: string; location_id: number }[];
 }
 
 const ROLES = [
@@ -34,7 +35,7 @@ function RoleBadge({ roleId }: { roleId: number | null }) {
   );
 }
 
-export function UserTable({ users }: { users: SiteUser[] }) {
+export function UserTable({ users, locations }: { users: SiteUser[]; locations: { id: number; name: string }[] }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SiteUser | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<SiteUser | null>(null);
@@ -44,6 +45,7 @@ export function UserTable({ users }: { users: SiteUser[] }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [roleId, setRoleId] = useState(3);
+  const [locationIds, setLocationIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +55,7 @@ export function UserTable({ users }: { users: SiteUser[] }) {
     setEmail("");
     setPassword("");
     setRoleId(3);
+    setLocationIds([]);
     setError(null);
     setModalOpen(true);
   }
@@ -63,6 +66,7 @@ export function UserTable({ users }: { users: SiteUser[] }) {
     setEmail(user.email);
     setPassword("");
     setRoleId(user.role_id ?? 3);
+    setLocationIds(user.userLocations.map((ul) => ul.location_id));
     setError(null);
     setModalOpen(true);
   }
@@ -78,6 +82,7 @@ export function UserTable({ users }: { users: SiteUser[] }) {
       email,
       password: password || undefined,
       role_id: roleId,
+      location_ids: locationIds,
     });
 
     if (result.success) {
@@ -117,6 +122,29 @@ export function UserTable({ users }: { users: SiteUser[] }) {
       accessorKey: "role_id",
       header: "Role",
       cell: ({ row }) => <RoleBadge roleId={row.original.role_id} />,
+    },
+    {
+      id: "locations",
+      header: "Lokasi",
+      cell: ({ row }) => {
+        const assigned = row.original.userLocations ?? [];
+        if (assigned.length === 0) {
+          return (
+            <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              Semua lokasi
+            </span>
+          );
+        }
+        const names = assigned
+          .map((ul) => locations.find((l) => l.id === ul.location_id)?.name)
+          .filter(Boolean)
+          .join(", ");
+        return (
+          <span className="text-xs" style={{ color: "var(--color-text-primary)" }}>
+            {names || `${assigned.length} lokasi`}
+          </span>
+        );
+      },
     },
     {
       id: "actions",
@@ -297,6 +325,47 @@ export function UserTable({ users }: { users: SiteUser[] }) {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label
+              className="block text-sm font-medium mb-1.5"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Lokasi
+            </label>
+            <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>
+              Kosongkan untuk akses semua lokasi.
+            </p>
+            <div
+              className="space-y-2 max-h-48 overflow-y-auto rounded-lg border p-3"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-primary)" }}
+            >
+              {locations.length === 0 ? (
+                <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                  Belum ada lokasi.
+                </p>
+              ) : (
+                locations.map((loc) => (
+                  <label key={loc.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={locationIds.includes(loc.id)}
+                      onChange={(e) => {
+                        setLocationIds((prev) =>
+                          e.target.checked
+                            ? [...prev, loc.id]
+                            : prev.filter((id) => id !== loc.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm" style={{ color: "var(--color-text-primary)" }}>
+                      {loc.name}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
           </div>
 
           {error && (

@@ -34,7 +34,7 @@ export async function setUserLocations(userId: string, locationIds: number[]) {
 }
 
 export async function getAllUsers() {
-  return prisma.siteUser.findMany({ include: { roles: true }, orderBy: { name: "asc" } });
+  return prisma.siteUser.findMany({ include: { roles: true, userLocations: true }, orderBy: { name: "asc" } });
 }
 
 export async function createUser(data: { name: string; email: string; password: string; role_id: number }) {
