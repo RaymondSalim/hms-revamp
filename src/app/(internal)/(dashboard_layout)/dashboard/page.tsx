@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { resolveLocationContext } from "@/app/_lib/util/location-scope";
 import {
   getCheckInOutCounts,
   getRoomStats,
@@ -15,9 +15,18 @@ import { AccessDenied } from "@/app/_components/access-denied";
 export default async function DashboardPage() {
   const { authorized } = await checkPermission("dashboard.view");
   if (!authorized) return <AccessDenied />;
-  const cookieStore = await cookies();
-  const locationCookie = cookieStore.get("selectedLocationId");
-  const locationId = locationCookie ? parseInt(locationCookie.value, 10) : 1;
+  const { selectedLocationId } = await resolveLocationContext();
+
+  if (!selectedLocationId) {
+    return (
+      <div className="text-center py-12">
+        <p style={{ color: "var(--color-text-secondary)" }}>
+          Tidak ada lokasi tersedia. Silakan tambahkan lokasi terlebih dahulu.
+        </p>
+      </div>
+    );
+  }
+  const locationId = selectedLocationId;
 
   const [checkInOutCounts, roomStats, occupancy, recentPayments, outstandingBills, upcomingEvents] =
     await Promise.all([

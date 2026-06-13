@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
+import { assertLocationAccess } from "@/app/_lib/util/location-scope";
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
 
@@ -29,6 +30,12 @@ export async function GET(request: NextRequest) {
       { error: "locationId required" },
       { status: 400 }
     );
+
+  try {
+    await assertLocationAccess(locationId);
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
 
   const whereClause: Record<string, unknown> = { location_id: locationId };
   if (startDate && endDate) {

@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getAppSetup, getCompanyName, getCompanyImage } from "@/app/_db/settings";
-import { getLocations } from "@/app/_db/locations";
+import { getLocationsForUser } from "@/app/_db/locations";
 import { auth } from "@/app/_lib/auth";
+import { getScopedLocationIds, pickSelectedLocationId } from "@/app/_lib/util/location-scope";
 import { getUserPermissions } from "@/app/_lib/rbac";
 import { LocationProvider } from "@/app/_context/location-context";
 import { Sidebar } from "@/app/_components/sidebar";
@@ -20,12 +21,18 @@ export default async function DashboardLayout({
 
   const session = await auth();
   const permissions = await getUserPermissions();
-  const locations = await getLocations();
+  const scope = await getScopedLocationIds();
+  const locations = await getLocationsForUser(scope);
   const companyName = await getCompanyName();
   const companyImage = await getCompanyImage();
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("selectedLocationId");
-  const initialLocationId = locationCookie ? parseInt(locationCookie.value, 10) : null;
+  const requested = locationCookie ? parseInt(locationCookie.value, 10) : null;
+  const initialLocationId = pickSelectedLocationId(
+    scope,
+    requested,
+    locations.map((l) => l.id)
+  );
 
   return (
     <LocationProvider initialLocations={locations} initialLocationId={initialLocationId}>

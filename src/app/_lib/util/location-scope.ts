@@ -1,4 +1,6 @@
 import { auth } from "@/app/_lib/auth";
+import { cookies } from "next/headers";
+import { getLocationsForUser } from "@/app/_db/locations";
 
 // A user's location scope. `null` means GLOBAL (no restriction — admin-by-no-assignment).
 // A number[] restricts the user to exactly those location ids. We never represent
@@ -53,4 +55,30 @@ export async function assertLocationAccess(locationId: number): Promise<void> {
   if (!isLocationInScope(scope, locationId)) {
     throw new Error("Unauthorized: location out of scope");
   }
+}
+
+// Resolve the location a page should render, validated against the caller's scope.
+// Returns { selectedLocationId, locations } where locations are the in-scope set.
+export async function resolveLocationContext(): Promise<{
+  selectedLocationId: number | null;
+  locations: { id: number; name: string; address: string }[];
+}> {
+  const scope = await getScopedLocationIds();
+  const locations = await getLocationsForUser(scope);
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get("selectedLocationId");
+  const requested = cookie ? parseInt(cookie.value, 10) : null;
+  const selectedLocationId = pickSelectedLocationId(
+    scope,
+    requested,
+    locations.map((l) => l.id)
+  );
+  return { selectedLocationId, locations };
+}
+
+// Validate that a client-supplied locationId (e.g. API ?locationId= param) is in
+// the caller's scope; throws if not. Returns the validated id.
+export async function requireLocationAccess(locationId: number): Promise<number> {
+  await assertLocationAccess(locationId);
+  return locationId;
 }

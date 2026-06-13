@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getGroupedIncomeExpense } from "@/app/_db/dashboard";
 import { serializeForClient } from "@/app/_lib/util/serialize";
 import { checkPermission } from "@/app/_lib/rbac";
+import { assertLocationAccess } from "@/app/_lib/util/location-scope";
 
 export async function GET(request: NextRequest) {
   const { authorized } = await checkPermission("financials.view");
@@ -11,6 +12,13 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const locationId = parseInt(searchParams.get("locationId") ?? "1", 10);
+
+  try {
+    await assertLocationAccess(locationId);
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   const startDate = new Date(searchParams.get("startDate") ?? new Date().toISOString());
   const endDate = new Date(searchParams.get("endDate") ?? new Date().toISOString());
   const splitDeposit = searchParams.get("splitDeposit") === "true";
