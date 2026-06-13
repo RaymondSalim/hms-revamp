@@ -1,4 +1,7 @@
 import { prisma } from "@/app/_lib/prisma";
+import type { Prisma } from "@prisma/client";
+
+type PrismaTxClient = Prisma.TransactionClient;
 
 /**
  * Generate a sequential invoice number for a location.
@@ -8,18 +11,20 @@ import { prisma } from "@/app/_lib/prisma";
  *
  * Concurrency: the running number comes from an atomic single-row increment
  * (`update: { last_number: { increment: 1 } }`) on the unique
- * (location_id, year, month) row, which Postgres serializes at the row level,
- * preventing duplicate numbers under concurrent calls.
+ * (location_id, year, month) row. Prisma compiles the upsert to a native
+ * `INSERT ... ON CONFLICT DO UPDATE`, which Postgres serializes at the row
+ * level, preventing duplicate numbers under concurrent calls.
  */
 export async function generateInvoiceNumber(
   locationId: number,
-  date?: Date
+  date?: Date,
+  client: PrismaTxClient = prisma
 ): Promise<string> {
   const d = date ?? new Date();
   const year = d.getFullYear();
   const month = d.getMonth() + 1;
 
-  const location = await prisma.location.findUnique({
+  const location = await client.location.findUnique({
     where: { id: locationId },
   });
   const code =
@@ -27,7 +32,7 @@ export async function generateInvoiceNumber(
       ? location.code.trim()
       : `LOC${locationId}`;
 
-  const seq = await prisma.invoiceSequence.upsert({
+  const seq = await client.invoiceSequence.upsert({
     where: {
       location_id_year_month: { location_id: locationId, year, month },
     },
@@ -46,6 +51,10 @@ export async function generateInvoiceNumber(
 /**
  * Generate and assign an invoice number to an existing bill.
  *
+ * The sequence increment and the bill update run in a single transaction so a
+ * failed update rolls back the consumed sequence number (no wasted numbers),
+ * while the increment itself stays atomic against concurrent callers.
+ *
  * Guard: if `locationId` is null the bill keeps a null invoice_number (skipped).
  * This keeps bill creation working for rooms that lack a location (e.g. some
  * test fixtures) instead of crashing.
@@ -56,9 +65,11 @@ export async function assignInvoiceNumber(
   date?: Date
 ): Promise<void> {
   if (locationId == null) return;
-  const invoiceNumber = await generateInvoiceNumber(locationId, date);
-  await prisma.bill.update({
-    where: { id: billId },
-    data: { invoice_number: invoiceNumber },
+  await prisma.$transaction(async (tx) => {
+    const invoiceNumber = await generateInvoiceNumber(locationId, date, tx);
+    await tx.bill.update({
+      where: { id: billId },
+      data: { invoice_number: invoiceNumber },
+    });
   });
 }
