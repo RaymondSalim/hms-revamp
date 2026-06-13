@@ -5,6 +5,7 @@ import {
   setUserLocations,
   getUserLocationIds,
 } from "@/app/_db/site-users";
+import { getBookingById } from "@/app/_db/bookings";
 
 describe("Location assignment", () => {
   beforeEach(async () => {
@@ -45,5 +46,32 @@ describe("Location assignment", () => {
 
     await setUserLocations(user.id, []);
     expect(await getUserLocationIds(user.id)).toEqual([]);
+  });
+});
+
+describe("By-id scope guard", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+    await seedTestData();
+  });
+
+  it("returns null when the booking's location is out of scope", async () => {
+    const locA = await testPrisma.location.create({ data: { name: "A", address: "A" } });
+    const locB = await testPrisma.location.create({ data: { name: "B", address: "B" } });
+    const rt = await testPrisma.roomType.create({ data: { type: `T-${Date.now()}` } });
+    await testPrisma.roomStatus.upsert({ where: { id: 1 }, update: {}, create: { id: 1, status: "AVAILABLE" } });
+    const room = await testPrisma.room.create({
+      data: { room_number: `R-${Date.now()}`, room_type_id: rt.id, status_id: 1, location_id: locA.id },
+    });
+    const tenant = await testPrisma.tenant.create({
+      data: { name: "T", id_number: "1", email: "t@test.com" },
+    });
+    const booking = await testPrisma.booking.create({
+      data: { room_id: room.id, start_date: new Date("2025-01-01"), end_date: new Date("2025-01-31"), fee: 1000000, tenant_id: tenant.id, is_rolling: false },
+    });
+
+    expect(await getBookingById(booking.id, [locA.id])).not.toBeNull();
+    expect(await getBookingById(booking.id, [locB.id])).toBeNull();
+    expect(await getBookingById(booking.id, null)).not.toBeNull();
   });
 });

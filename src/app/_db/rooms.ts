@@ -1,4 +1,5 @@
 import { prisma } from "@/app/_lib/prisma";
+import type { LocationScope } from "@/app/_lib/util/location-scope";
 
 export async function getRoomsByLocation(locationId: number) {
   return prisma.room.findMany({
@@ -8,9 +9,12 @@ export async function getRoomsByLocation(locationId: number) {
   });
 }
 
-export async function getRoomById(id: number) {
-  return prisma.room.findUnique({
-    where: { id },
+export async function getRoomById(id: number, scope: LocationScope = null) {
+  return prisma.room.findFirst({
+    where: {
+      id,
+      ...(scope === null ? {} : { location_id: { in: scope } }),
+    },
     include: { roomtypes: true, roomstatuses: true, locations: true, bookings: true },
   });
 }
