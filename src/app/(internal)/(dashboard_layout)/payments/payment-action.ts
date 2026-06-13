@@ -8,15 +8,25 @@ import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
 
-// BL-005: Transaction Splitting
+// BL-005: Transaction Splitting.
+//
+// The whole rebuild (delete prior transactions + recreate income/credit/deposit
+// transactions + adjust deposit status) runs in a single interactive
+// transaction so a partial failure can't leave a payment with some but not all
+// of its derived transactions. Idempotent: safe to call repeatedly.
+//
+// NOTE: must NOT be called from inside another interactive transaction (Prisma
+// does not support nesting). Callers that rebuild many payments loop over this
+// sequentially; each call is independently atomic.
 export async function createOrUpdatePaymentTransactions(paymentId: number) {
+  await prisma.$transaction(async (tx) => {
   // Delete existing transactions linked to this payment
-  await prisma.transaction.deleteMany({
+  await tx.transaction.deleteMany({
     where: { related_id: { path: ["payment_id"], equals: paymentId } },
   });
 
   // Fetch payment with its bill allocations and bill items
-  const payment = await prisma.payment.findUnique({
+  const payment = await tx.payment.findUnique({
     where: { id: paymentId },
     include: {
       paymentBills: {
@@ -94,7 +104,7 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
 
   // Create "Deposit" INCOME transaction if depositTotal > 0
   if (depositTotal > 0 && depositId) {
-    await prisma.transaction.create({
+    await tx.transaction.create({
       data: {
         amount: depositTotal,
         description: "Deposit",
@@ -109,7 +119,7 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
     // BL-006: If deposit status is UNPAID, update to HELD
     const deposit = payment.bookings.deposit;
     if (deposit && deposit.status === "UNPAID") {
-      await prisma.deposit.update({
+      await tx.deposit.update({
         where: { id: deposit.id },
         data: { status: "HELD" },
       });
@@ -118,7 +128,7 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
 
   // Create "Biaya Sewa" INCOME transaction if regularTotal > 0
   if (regularTotal > 0) {
-    await prisma.transaction.create({
+    await tx.transaction.create({
       data: {
         amount: regularTotal,
         description: "Biaya Sewa",
@@ -134,7 +144,7 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
   // Create "Kelebihan Bayar" CREDIT transaction if there's overpayment
   // Overpayment is a liability (held for / owed to the tenant), not revenue.
   if (excessTotal > 0) {
-    await prisma.transaction.create({
+    await tx.transaction.create({
       data: {
         amount: excessTotal,
         description: "Kelebihan Bayar",
@@ -150,19 +160,20 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
   // BL-007: If no deposit transactions remain for a deposit, revert to UNPAID
   if (payment.bookings.deposit && !depositId) {
     const deposit = payment.bookings.deposit;
-    const remainingDepositTx = await prisma.transaction.findMany({
+    const remainingDepositTx = await tx.transaction.findMany({
       where: {
         related_id: { path: ["deposit_id"], equals: deposit.id },
         type: "INCOME",
       },
     });
     if (remainingDepositTx.length === 0 && deposit.status === "HELD") {
-      await prisma.deposit.update({
+      await tx.deposit.update({
         where: { id: deposit.id },
         data: { status: "UNPAID" },
       });
     }
   }
+  });
 }
 
 // BL-007 helper: Check if deposit should revert to UNPAID
