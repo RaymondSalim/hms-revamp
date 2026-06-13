@@ -77,25 +77,26 @@ export async function runLateFees(today?: Date) {
     );
     if (fee <= 0) continue;
 
-    await prisma.penalty.create({
-      data: {
-        description: "Denda Keterlambatan",
-        amount: fee,
-        booking_id: bill.booking_id,
-        bill_id: bill.id,
-        penalty_date: now,
-      },
-    });
-
-    await prisma.billItem.create({
-      data: {
-        bill_id: bill.id,
-        description: "Denda Keterlambatan",
-        amount: fee,
-        type: "GENERATED",
-        related_id: { penalty: true },
-      },
-    });
+    await prisma.$transaction([
+      prisma.penalty.create({
+        data: {
+          description: "Denda Keterlambatan",
+          amount: fee,
+          booking_id: bill.booking_id,
+          bill_id: bill.id,
+          penalty_date: now,
+        },
+      }),
+      prisma.billItem.create({
+        data: {
+          bill_id: bill.id,
+          description: "Denda Keterlambatan",
+          amount: fee,
+          type: "GENERATED",
+          related_id: { penalty: true },
+        },
+      }),
+    ]);
 
     await logAudit(
       `late_fee.created: bill_id=${bill.id}, booking_id=${bill.booking_id}, amount=${fee}`

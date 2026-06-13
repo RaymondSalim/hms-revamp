@@ -151,6 +151,7 @@ model Bill {
   paymentBills PaymentBill[]
   penalties    Penalty[]
 
+  @@unique([booking_id, due_date])
   @@map("bills")
 }
 
@@ -424,7 +425,7 @@ model Penalty {
   description  String    @db.VarChar(255)
   amount       Decimal   @db.Decimal(10, 2)
   booking_id   Int
-  bill_id      Int?
+  bill_id      Int?      @unique
   penalty_date DateTime? @db.Date
 
   createdAt DateTime @default(now())

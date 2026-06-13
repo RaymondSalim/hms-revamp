@@ -61,11 +61,24 @@ export async function createBillAction(data: {
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
+  const dueDate = new Date(data.due_date);
+  const duplicate = await prisma.bill.findUnique({
+    where: {
+      booking_id_due_date: { booking_id: data.booking_id, due_date: dueDate },
+    },
+  });
+  if (duplicate) {
+    return {
+      success: false,
+      error: "Tagihan dengan tanggal jatuh tempo ini sudah ada untuk pemesanan tersebut",
+    };
+  }
+
   const bill = await prisma.bill.create({
     data: {
       booking_id: data.booking_id,
       description: data.description,
-      due_date: new Date(data.due_date),
+      due_date: dueDate,
     },
   });
 
