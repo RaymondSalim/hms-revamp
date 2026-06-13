@@ -8,9 +8,12 @@ import { revalidatePath } from "next/cache";
 /**
  * Derive the available (unrefunded) overpayment credit for a booking.
  *
- * Available credit is NOT stored as a mutable counter. It is derived by summing
- * CREDIT transactions ("Kelebihan Bayar") created for the booking's payments and
- * subtracting any credit refunds (EXPENSE transactions tagged with credit_refund).
+ * Available credit is NOT stored as a mutable counter. It is derived purely from
+ * CREDIT-type transactions: positive "Kelebihan Bayar" rows created for the
+ * booking's payments (the overpayment liability) plus negative refund rows
+ * tagged with credit_refund (which draw the liability back down). Both legs are
+ * CREDIT so a refund stays inside the liability account and never touches the
+ * income/expense P&L.
  */
 export async function getAvailableCredit(bookingId: number): Promise<number> {
   const { authorized } = await checkPermission("payments.view");
@@ -22,41 +25,39 @@ export async function getAvailableCredit(bookingId: number): Promise<number> {
   });
   const paymentIds = new Set(payments.map((p) => p.id));
 
-  // Sum CREDIT transactions belonging to this booking's payments.
+  // Net all CREDIT transactions for this booking: overpayments (positive,
+  // tagged payment_id) net of refunds (negative, tagged booking_id +
+  // credit_refund).
   const creditTransactions = await prisma.transaction.findMany({
     where: { type: "CREDIT" },
   });
-  const creditTotal = creditTransactions.reduce((sum, t) => {
-    const related = t.related_id as { payment_id?: number } | null;
-    if (related && typeof related.payment_id === "number" && paymentIds.has(related.payment_id)) {
-      return sum + Number(t.amount);
-    }
-    return sum;
-  }, 0);
-
-  // Subtract refunds for this booking (EXPENSE transactions tagged credit_refund).
-  const refundTransactions = await prisma.transaction.findMany({
-    where: { type: "EXPENSE" },
-  });
-  const refundTotal = refundTransactions.reduce((sum, t) => {
+  const net = creditTransactions.reduce((sum, t) => {
     const related = t.related_id as
-      | { booking_id?: number; credit_refund?: boolean }
+      | { payment_id?: number; booking_id?: number; credit_refund?: boolean }
       | null;
-    if (related && related.booking_id === bookingId && related.credit_refund === true) {
+    if (!related) return sum;
+    const isOverpayment =
+      typeof related.payment_id === "number" &&
+      paymentIds.has(related.payment_id);
+    const isRefund =
+      related.booking_id === bookingId && related.credit_refund === true;
+    if (isOverpayment || isRefund) {
       return sum + Number(t.amount);
     }
     return sum;
   }, 0);
 
-  const net = creditTotal - refundTotal;
   return net > 0 ? net : 0;
 }
 
 /**
  * Refund overpayment credit back to a departing tenant.
  *
- * Creates an EXPENSE transaction tagged with credit_refund so getAvailableCredit
- * deducts it from the derived balance.
+ * Records a NEGATIVE CREDIT transaction tagged with credit_refund. Because the
+ * original overpayment is a CREDIT (liability, excluded from revenue), the
+ * refund must also be a CREDIT so it reduces that liability rather than landing
+ * in the P&L as an expense. getAvailableCredit nets it against the positive
+ * overpayment credits.
  */
 export async function refundCreditAction(
   bookingId: number,
@@ -86,13 +87,14 @@ export async function refundCreditAction(
     return { success: false, error: "Lokasi tidak ditemukan" };
   }
 
+  // Negative CREDIT: draws down the overpayment liability without hitting P&L.
   await prisma.transaction.create({
     data: {
-      amount,
+      amount: -amount,
       description: "Pengembalian Kelebihan Bayar",
       date: new Date(),
       category: "Kelebihan Bayar",
-      type: "EXPENSE",
+      type: "CREDIT",
       location_id: locationId,
       related_id: { booking_id: bookingId, credit_refund: true },
     },

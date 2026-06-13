@@ -19,7 +19,11 @@ import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 import { computeExpectedStatus } from "@/app/_lib/util/booking-status";
 import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
-import { prorateFromStartDay, roundMoney } from "@/app/_lib/util/money";
+import {
+  prorateFromStartDay,
+  roundMoney,
+  applyRateEscalation,
+} from "@/app/_lib/util/money";
 
 // --- Shared bill generation helper types ---
 interface BillGenerationBooking {
@@ -72,11 +76,23 @@ async function generateBillsForRange(
     const billingYear = current.getFullYear();
     const dueDate = lastDayOfMonth(current);
 
-    // Calculate room fee (BL-012: due_date = last day of billing month)
-    let roomFee = fee;
+    // Calculate room fee (BL-012: due_date = last day of billing month).
+    // Rent escalation steps up the base fee every N months of tenancy before
+    // any first-month proration is applied.
+    const escalatedFee = applyRateEscalation(
+      fee,
+      monthIndex,
+      policy.rate_escalation_percentage,
+      policy.rate_escalation_frequency
+    );
+    let roomFee = escalatedFee;
     if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
       // Prorate first month: (daysInMonth - startDay + 1) / daysInMonth * fee
-      roomFee = prorateFromStartDay(fee, startDate.getDate(), daysInMonth);
+      roomFee = prorateFromStartDay(
+        escalatedFee,
+        startDate.getDate(),
+        daysInMonth
+      );
     }
 
     // BL-013: description format
@@ -118,10 +134,16 @@ async function generateBillsForRange(
 
     // Second resident fee
     if (secondResidentFee && secondResidentFee > 0) {
-      let srFee = secondResidentFee;
+      const escalatedSrFee = applyRateEscalation(
+        secondResidentFee,
+        monthIndex,
+        policy.rate_escalation_percentage,
+        policy.rate_escalation_frequency
+      );
+      let srFee = escalatedSrFee;
       if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
         srFee = prorateFromStartDay(
-          secondResidentFee,
+          escalatedSrFee,
           startDate.getDate(),
           daysInMonth
         );

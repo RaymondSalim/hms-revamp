@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { prorateFromStartDay, roundMoney } from "@/app/_lib/util/money";
+import {
+  prorateFromStartDay,
+  roundMoney,
+  applyRateEscalation,
+} from "@/app/_lib/util/money";
 
 /**
  * Proration helper used in booking-action.ts:
@@ -45,5 +49,39 @@ describe("prorateFromStartDay", () => {
     expect(roundMoney(0.5)).toBe(1);
     expect(roundMoney(1.4)).toBe(1);
     expect(roundMoney(1.6)).toBe(2);
+  });
+});
+
+describe("applyRateEscalation", () => {
+  it("returns base amount when no escalation configured", () => {
+    expect(applyRateEscalation(1000000, 24, 0, 12)).toBe(1000000);
+    expect(applyRateEscalation(1000000, 24, 10, null)).toBe(1000000);
+    expect(applyRateEscalation(1000000, 24, 10, 0)).toBe(1000000);
+  });
+
+  it("does not escalate before the first frequency boundary", () => {
+    // frequency 12: months 0..11 are step 0
+    expect(applyRateEscalation(1000000, 0, 10, 12)).toBe(1000000);
+    expect(applyRateEscalation(1000000, 11, 10, 12)).toBe(1000000);
+  });
+
+  it("steps up by percentage each frequency window (compounding)", () => {
+    // month 12 -> 1 step: 1,000,000 * 1.10 = 1,100,000
+    expect(applyRateEscalation(1000000, 12, 10, 12)).toBe(1100000);
+    // month 24 -> 2 steps: 1,000,000 * 1.10^2 = 1,210,000
+    expect(applyRateEscalation(1000000, 24, 10, 12)).toBe(1210000);
+  });
+
+  it("supports a 6-month escalation frequency", () => {
+    // month 6 -> 1 step at 5%: 2,000,000 * 1.05 = 2,100,000
+    expect(applyRateEscalation(2000000, 6, 5, 6)).toBe(2100000);
+    // month 13 -> 2 steps: 2,000,000 * 1.05^2 = 2,205,000
+    expect(applyRateEscalation(2000000, 13, 5, 6)).toBe(2205000);
+  });
+
+  it("rounds the escalated amount to whole rupiah", () => {
+    // 1,000,000 * 1.075 = 1,075,000 exactly; use a rate that needs rounding
+    // month 12 -> 1 step at 3.33%: 1,000,000 * 1.0333 = 1,033,300
+    expect(applyRateEscalation(1000000, 12, 3.33, 12)).toBe(1033300);
   });
 });

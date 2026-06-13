@@ -88,5 +88,18 @@ describe("Credit Refund Workflow", () => {
 
     const r3 = await refundCreditAction(booking.id, 1);
     expect(r3.success).toBe(false);
+
+    // Credit refunds must stay inside the liability account: they are negative
+    // CREDIT rows, never EXPENSE, so they don't distort income/expense P&L.
+    const refundExpenses = await testPrisma.transaction.findMany({
+      where: { type: "EXPENSE", category: "Kelebihan Bayar" },
+    });
+    expect(refundExpenses).toHaveLength(0);
+
+    const refundCredits = await testPrisma.transaction.findMany({
+      where: { type: "CREDIT", description: "Pengembalian Kelebihan Bayar" },
+    });
+    expect(refundCredits).toHaveLength(2);
+    expect(refundCredits.every((t) => Number(t.amount) < 0)).toBe(true);
   });
 });

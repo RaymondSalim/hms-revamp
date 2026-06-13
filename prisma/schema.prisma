@@ -13,10 +13,10 @@ model Booking {
   start_date          DateTime @db.Date
   duration_id         Int?
   status_id           Int?
-  fee                 Decimal  @db.Decimal(10, 2)
+  fee                 Decimal  @db.Decimal(12, 2)
   tenant_id           String?
   end_date            DateTime? @db.Date
-  second_resident_fee Decimal? @db.Decimal(10, 2)
+  second_resident_fee Decimal? @db.Decimal(12, 2)
   is_rolling          Boolean  @default(false)
 
   createdAt DateTime @default(now())
@@ -118,7 +118,7 @@ model GuestStay {
   guest_id   Int
   start_date DateTime @db.Date
   end_date   DateTime @db.Date
-  daily_fee  Decimal  @db.Decimal(10, 2)
+  daily_fee  Decimal  @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -159,7 +159,7 @@ model BillItem {
   id                   Int     @id @default(autoincrement())
   bill_id              Int
   description          String  @db.VarChar(255)
-  amount               Decimal @db.Decimal(10, 2)
+  amount               Decimal @db.Decimal(12, 2)
   internal_description String? @db.VarChar(255)
 
   createdAt  DateTime @default(now())
@@ -179,7 +179,7 @@ model MeterReading {
   reading_date   DateTime @db.Date
   reading_value  Decimal  @db.Decimal(12, 2)
   previous_value Decimal? @db.Decimal(12, 2)
-  rate_per_unit  Decimal  @db.Decimal(10, 2)
+  rate_per_unit  Decimal  @db.Decimal(12, 2)
   photo_proof    String?  @db.VarChar(512)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
@@ -191,7 +191,7 @@ model MeterReading {
 model Payment {
   id              Int      @id @default(autoincrement())
   booking_id      Int
-  amount          Decimal  @db.Decimal(10, 2)
+  amount          Decimal  @db.Decimal(12, 2)
   payment_date    DateTime @db.Date
   payment_proof   String?  @db.VarChar(255)
   status_id       Int?
@@ -210,7 +210,7 @@ model Payment {
 model PaymentBill {
   payment_id Int
   bill_id    Int
-  amount     Decimal @db.Decimal(10, 2)
+  amount     Decimal @db.Decimal(12, 2)
   id         Int     @id @default(autoincrement())
   bill       Bill    @relation(fields: [bill_id], references: [id], onDelete: Cascade)
   payment    Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
@@ -423,7 +423,7 @@ model VerificationToken {
 model Penalty {
   id           Int       @id @default(autoincrement())
   description  String    @db.VarChar(255)
-  amount       Decimal   @db.Decimal(10, 2)
+  amount       Decimal   @db.Decimal(12, 2)
   booking_id   Int
   bill_id      Int?      @unique
   penalty_date DateTime? @db.Date
@@ -458,7 +458,7 @@ model BillingPolicy {
   location_id                 Int?
   booking_id                  Int?
   late_fee_type               String?  @db.VarChar(20)
-  late_fee_amount             Decimal? @db.Decimal(10, 2)
+  late_fee_amount             Decimal? @db.Decimal(12, 2)
   grace_period_days           Int?     @default(0)
   billing_cycle_day           Int?     @default(0)
   proration_method            String?  @db.VarChar(20)
@@ -574,7 +574,7 @@ model AddOn {
 
 model AddOnPricing {
   id              String  @id @default(cuid())
-  price           Decimal @db.Decimal(10, 2)
+  price           Decimal @db.Decimal(12, 2)
   addon_id        String
   interval_end    Int?
   interval_start  Int
@@ -603,11 +603,11 @@ model BookingAddOn {
 model Deposit {
   id              Int           @id @default(autoincrement())
   booking_id      Int
-  amount          Decimal       @db.Decimal(10, 2)
+  amount          Decimal       @db.Decimal(12, 2)
   status          DepositStatus
   refunded_at     DateTime?
   applied_at      DateTime?
-  refunded_amount Decimal?      @db.Decimal(10, 2)
+  refunded_amount Decimal?      @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt

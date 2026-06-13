@@ -141,6 +141,60 @@ describe("Bill Generation", () => {
       expect(Number(roomFeeItem!.amount)).toBeCloseTo(expectedProrated, 0);
     });
 
+    it("should escalate rent after the configured frequency", async () => {
+      const { room, tenant } = await createBaseData();
+
+      // Booking spanning 13 months starting on the 1st (no proration).
+      const booking = await testPrisma.booking.create({
+        data: {
+          room_id: room.id,
+          start_date: new Date("2025-01-01"),
+          end_date: new Date("2026-01-31"),
+          fee: 1000000,
+          tenant_id: tenant.id,
+          is_rolling: false,
+        },
+      });
+
+      // Booking-level policy: +10% every 12 months.
+      await testPrisma.billingPolicy.create({
+        data: {
+          booking_id: booking.id,
+          proration_method: "daily",
+          rate_escalation_percentage: 10,
+          rate_escalation_frequency: 12,
+        },
+      });
+
+      await generateBillsForFixedBooking({
+        id: booking.id,
+        start_date: new Date("2025-01-01"),
+        fee: 1000000,
+        second_resident_fee: null,
+        deposit: null,
+        addOns: [],
+        end_date: new Date("2026-01-31"),
+      });
+
+      const dbBills = await testPrisma.bill.findMany({
+        where: { booking_id: booking.id },
+        orderBy: { due_date: "asc" },
+        include: { bill_item: true },
+      });
+
+      const roomFee = (billIndex: number) =>
+        Number(
+          dbBills[billIndex].bill_item.find(
+            (i) => i.description === "Biaya Sewa"
+          )!.amount
+        );
+
+      // Months 0..11 stay at base; month 12 (the 13th bill) steps to +10%.
+      expect(roomFee(0)).toBe(1000000);
+      expect(roomFee(11)).toBe(1000000);
+      expect(roomFee(12)).toBe(1100000);
+    });
+
     it("should include deposit in first bill", async () => {
       const { room, tenant } = await createBaseData();
 
