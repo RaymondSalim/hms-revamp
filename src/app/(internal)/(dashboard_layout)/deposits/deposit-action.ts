@@ -4,6 +4,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { DepositStatus } from "@prisma/client";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 import { logAudit } from "@/app/_lib/audit";
@@ -20,6 +21,13 @@ export async function updateDepositStatusAction(data: {
     include: { booking: { include: { rooms: true } } },
   });
   if (!deposit) return { success: false, error: "Deposit not found" };
+
+  // Location scope guard: scoped users may only mutate deposits in their locations.
+  const locationId = deposit.booking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   // Validate transitions (only from HELD):
   // - HELD -> APPLIED: set applied_at, NO transaction (BL-009)
@@ -145,6 +153,17 @@ export async function updateDepositAmountAction(
 ) {
   const { authorized } = await checkPermission("deposits.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate deposits in their locations.
+  const dep = await prisma.deposit.findUnique({
+    where: { id: depositId },
+    select: { booking: { select: { rooms: { select: { location_id: true } } } } },
+  });
+  const locationId = dep?.booking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   if (amount <= 0) return { success: false, error: "Amount must be positive" };
   await prisma.deposit.update({

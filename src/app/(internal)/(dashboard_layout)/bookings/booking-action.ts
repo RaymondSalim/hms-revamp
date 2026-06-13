@@ -14,6 +14,7 @@ import {
   formatTaxDescription,
 } from "@/app/_lib/util/billing-policy";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { logAudit } from "@/app/_lib/audit";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
@@ -421,6 +422,17 @@ export async function upsertBookingAction(data: {
   const { authorized } = await checkPermission("bookings.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
+  // Location scope guard: scoped users may only mutate bookings in their locations.
+  const room = await prisma.room.findUnique({
+    where: { id: data.room_id },
+    select: { location_id: true },
+  });
+  const locationId = room?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
   const parsed = bookingSchema.safeParse(data);
   if (!parsed.success) return { success: false, error: parsed.error.flatten() };
 
@@ -675,6 +687,17 @@ export async function scheduleEndOfStayAction(
   const { authorized } = await checkPermission("bookings.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
+  // Location scope guard: scoped users may only mutate bookings in their locations.
+  const b = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = b?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
   try {
     // 1. Update booking: end_date=endDate, is_rolling=false
     await prisma.booking.update({
@@ -795,6 +818,17 @@ export async function checkInOutAction(data: {
 }) {
   const { authorized } = await checkPermission("bookings.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate bookings in their locations.
+  const checkInOutBooking = await prisma.booking.findUnique({
+    where: { id: data.booking_id },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = checkInOutBooking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   try {
     // 1. Create CheckInOutLog record
@@ -917,6 +951,17 @@ export async function checkInOutAction(data: {
 export async function deleteBookingAction(id: number) {
   const { authorized } = await checkPermission("bookings.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate bookings in their locations.
+  const deleteBooking = await prisma.booking.findUnique({
+    where: { id },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = deleteBooking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   try {
     const booking = await prisma.booking.findUnique({ where: { id } });

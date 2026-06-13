@@ -3,6 +3,7 @@
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 
@@ -13,6 +14,17 @@ export async function simulateUnpaidBillPaymentAction(
 ) {
   const { authorized } = await checkPermission("payments.view");
   if (!authorized) return [];
+
+  // Location scope guard: scoped users may only view bills in their locations.
+  const simBooking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = simBooking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return [];
+  }
 
   const bills = await prisma.bill.findMany({
     where: { booking_id: bookingId },
@@ -60,6 +72,17 @@ export async function createBillAction(data: {
 }) {
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate bills in their locations.
+  const createBillBooking = await prisma.booking.findUnique({
+    where: { id: data.booking_id },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = createBillBooking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   const dueDate = new Date(data.due_date);
   const duplicate = await prisma.bill.findUnique({
@@ -116,6 +139,17 @@ export async function updateBillDueDateAction(billId: number, dueDate: Date) {
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
+  // Location scope guard: scoped users may only mutate bills in their locations.
+  const billForScope = await prisma.bill.findUnique({
+    where: { id: billId },
+    select: { bookings: { select: { rooms: { select: { location_id: true } } } } },
+  });
+  const locationId = billForScope?.bookings?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
   const bill = await prisma.bill.findUnique({ where: { id: billId } });
   if (!bill) return { success: false, error: "Bill not found" };
 
@@ -137,6 +171,17 @@ export async function addBillItemAction(
 ) {
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate bills in their locations.
+  const billForScope = await prisma.bill.findUnique({
+    where: { id: billId },
+    select: { bookings: { select: { rooms: { select: { location_id: true } } } } },
+  });
+  const locationId = billForScope?.bookings?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   const bill = await prisma.bill.findUnique({ where: { id: billId } });
   if (!bill) return { success: false, error: "Bill not found" };
@@ -163,6 +208,21 @@ export async function updateBillItemAction(
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
+  // Location scope guard: scoped users may only mutate bills in their locations.
+  const itemForScope = await prisma.billItem.findUnique({
+    where: { id: itemId },
+    select: {
+      bill: {
+        select: { bookings: { select: { rooms: { select: { location_id: true } } } } },
+      },
+    },
+  });
+  const locationId = itemForScope?.bill?.bookings?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
   const item = await prisma.billItem.findUnique({
     where: { id: itemId },
     include: { bill: true },
@@ -178,6 +238,21 @@ export async function updateBillItemAction(
 export async function deleteBillItemAction(itemId: number) {
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate bills in their locations.
+  const itemForScope = await prisma.billItem.findUnique({
+    where: { id: itemId },
+    select: {
+      bill: {
+        select: { bookings: { select: { rooms: { select: { location_id: true } } } } },
+      },
+    },
+  });
+  const locationId = itemForScope?.bill?.bookings?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   const item = await prisma.billItem.findUnique({
     where: { id: itemId },

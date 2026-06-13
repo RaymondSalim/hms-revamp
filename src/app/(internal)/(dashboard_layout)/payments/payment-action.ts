@@ -6,6 +6,7 @@ import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/
 import { paymentSchema } from "@/app/_lib/zod/payment/zod";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { logAudit } from "@/app/_lib/audit";
 
 // BL-005: Transaction Splitting.
@@ -213,6 +214,17 @@ export async function upsertPaymentAction(data: {
   const { authorized } = await checkPermission("payments.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
+  // Location scope guard: scoped users may only mutate payments in their locations.
+  const upsertBooking = await prisma.booking.findUnique({
+    where: { id: data.booking_id },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = upsertBooking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
   // Validate with Zod
   const parsed = paymentSchema.safeParse({
     booking_id: data.booking_id,
@@ -324,6 +336,17 @@ export async function upsertPaymentAction(data: {
 export async function deletePaymentAction(paymentId: number) {
   const { authorized } = await checkPermission("payments.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate payments in their locations.
+  const p = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    select: { bookings: { select: { rooms: { select: { location_id: true } } } } },
+  });
+  const locationId = p?.bookings?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
