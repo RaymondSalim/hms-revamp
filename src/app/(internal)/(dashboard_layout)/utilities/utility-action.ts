@@ -4,6 +4,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
+import { roundMoney } from "@/app/_lib/util/money";
 
 function utilityLabel(utilityType: string): string {
   return utilityType === "electricity" ? "Listrik" : "Air";
@@ -52,7 +53,7 @@ export async function createMeterReadingAction(data: {
   // reading exists). The first reading just establishes a baseline.
   if (previousValue !== null) {
     const consumption = Math.max(0, data.reading_value - previousValue);
-    const amount = Math.round(consumption * data.rate_per_unit);
+    const amount = roundMoney(consumption * data.rate_per_unit);
 
     // Attach to the booking's CURRENT bill: latest bill by due_date.
     const latestBill = await prisma.bill.findFirst({

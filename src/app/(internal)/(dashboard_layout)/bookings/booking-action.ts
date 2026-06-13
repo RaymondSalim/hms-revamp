@@ -19,6 +19,7 @@ import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 import { computeExpectedStatus } from "@/app/_lib/util/booking-status";
 import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
+import { prorateFromStartDay, roundMoney } from "@/app/_lib/util/money";
 
 // --- Shared bill generation helper types ---
 interface BillGenerationBooking {
@@ -75,8 +76,7 @@ async function generateBillsForRange(
     let roomFee = fee;
     if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
       // Prorate first month: (daysInMonth - startDay + 1) / daysInMonth * fee
-      const startDay = startDate.getDate();
-      roomFee = ((daysInMonth - startDay + 1) / daysInMonth) * fee;
+      roomFee = prorateFromStartDay(fee, startDate.getDate(), daysInMonth);
     }
 
     // BL-013: description format
@@ -120,9 +120,11 @@ async function generateBillsForRange(
     if (secondResidentFee && secondResidentFee > 0) {
       let srFee = secondResidentFee;
       if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
-        const startDay = startDate.getDate();
-        srFee =
-          ((daysInMonth - startDay + 1) / daysInMonth) * secondResidentFee;
+        srFee = prorateFromStartDay(
+          secondResidentFee,
+          startDate.getDate(),
+          daysInMonth
+        );
       }
       await prisma.billItem.create({
         data: {
@@ -161,8 +163,11 @@ async function generateBillsForRange(
         // Prorate addon on first booking month if start day is not 1st
         let addonFee = charge;
         if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
-          const startDay = startDate.getDate();
-          addonFee = ((daysInMonth - startDay + 1) / daysInMonth) * charge;
+          addonFee = prorateFromStartDay(
+            charge,
+            startDate.getDate(),
+            daysInMonth
+          );
         }
         await prisma.billItem.create({
           data: {
@@ -692,7 +697,7 @@ export async function scheduleEndOfStayAction(
           if (item.type !== "GENERATED") continue;
           if (item.related_id) continue; // Skip deposit + tax items
 
-          const proratedAmount = Math.round(Number(item.amount) * ratio);
+          const proratedAmount = roundMoney(Number(item.amount) * ratio);
           await prisma.billItem.update({
             where: { id: item.id },
             data: { amount: proratedAmount },

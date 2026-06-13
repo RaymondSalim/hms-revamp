@@ -1,4 +1,5 @@
 import { prisma } from "@/app/_lib/prisma";
+import { roundMoney } from "@/app/_lib/util/money";
 
 /**
  * A fully-resolved billing policy with all fields non-null (sensible defaults
@@ -93,7 +94,7 @@ export function mergePolicy(
  */
 export function computeTax(taxableSubtotal: number, taxRate: number): number {
   if (!taxRate || taxRate <= 0) return 0;
-  return Math.round((taxableSubtotal * taxRate) / 100);
+  return roundMoney((taxableSubtotal * taxRate) / 100);
 }
 
 /**
@@ -111,7 +112,7 @@ export function computeLateFee(
 ): number {
   if (lateFeeType === "flat") return lateFeeAmount;
   if (lateFeeType === "percentage") {
-    return Math.round((outstanding * lateFeeAmount) / 100);
+    return roundMoney((outstanding * lateFeeAmount) / 100);
   }
   return 0;
 }
