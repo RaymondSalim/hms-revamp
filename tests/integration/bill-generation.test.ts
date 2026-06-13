@@ -308,7 +308,7 @@ describe("Bill Generation", () => {
               pricing: addon.pricing.map((p) => ({
                 interval_start: p.interval_start,
                 interval_end: p.interval_end,
-                price: p.price,
+                price: Number(p.price),
                 is_full_payment: p.is_full_payment,
               })),
             },

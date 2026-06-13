@@ -17,7 +17,7 @@ interface AddonRow {
   location_id: number | null;
   parent_addon_id: string | null;
   requires_input: boolean;
-  pricing: PricingTier[];
+  pricing: Array<Omit<PricingTier, "price"> & { price: number | string }>;
 }
 
 interface Props {
@@ -50,7 +50,7 @@ export function AddonForm({ addon, locationId, existingAddons, onSubmit, onCance
   const [requiresInput, setRequiresInput] = useState(addon?.requires_input ?? false);
   const [pricingTiers, setPricingTiers] = useState<PricingTier[]>(
     addon?.pricing?.length
-      ? addon.pricing.map((p) => ({ ...p }))
+      ? addon.pricing.map((p) => ({ ...p, price: Number(p.price) }))
       : [{ price: 0, interval_start: 0, interval_end: null, is_full_payment: false }]
   );
   const [errors, setErrors] = useState<string[]>([]);

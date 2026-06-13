@@ -22,7 +22,7 @@ export default async function AddonsPage() {
 
   return (
     <AddonTable
-      addons={serializeForClient(addons)}
+      addons={serializeForClient(addons) as never}
       locationId={selectedLocationId ?? 0}
     />
   );

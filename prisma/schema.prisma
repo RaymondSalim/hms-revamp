@@ -573,7 +573,7 @@ model AddOn {
 
 model AddOnPricing {
   id              String  @id @default(cuid())
-  price           Float
+  price           Decimal @db.Decimal(10, 2)
   addon_id        String
   interval_end    Int?
   interval_start  Int

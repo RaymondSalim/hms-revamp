@@ -12,7 +12,7 @@ import { toast } from "react-toastify";
 
 interface PricingTier {
   id?: string;
-  price: number;
+  price: number | string;
   interval_start: number;
   interval_end: number | null;
   is_full_payment: boolean;
