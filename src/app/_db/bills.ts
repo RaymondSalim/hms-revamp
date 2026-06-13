@@ -10,7 +10,7 @@ export async function getBillsByBooking(bookingId: number) {
   });
 }
 
-export async function getBillById(id: number, scope: LocationScope = null) {
+export async function getBillById(id: number, scope: LocationScope) {
   return prisma.bill.findFirst({
     where: {
       id,

@@ -9,7 +9,7 @@ export async function getRoomsByLocation(locationId: number) {
   });
 }
 
-export async function getRoomById(id: number, scope: LocationScope = null) {
+export async function getRoomById(id: number, scope: LocationScope) {
   return prisma.room.findFirst({
     where: {
       id,

@@ -9,7 +9,7 @@ export async function getPaymentsByBooking(bookingId: number) {
   });
 }
 
-export async function getPaymentById(id: number, scope: LocationScope = null) {
+export async function getPaymentById(id: number, scope: LocationScope) {
   return prisma.payment.findFirst({
     where: {
       id,

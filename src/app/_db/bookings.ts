@@ -16,7 +16,7 @@ export async function getBookingsByLocation(locationId: number) {
   });
 }
 
-export async function getBookingById(id: number, scope: LocationScope = null) {
+export async function getBookingById(id: number, scope: LocationScope) {
   return prisma.booking.findFirst({
     where: {
       id,
