@@ -374,6 +374,7 @@ model SiteUser {
   logs        Log[]
   sessions    Session[]
   roles       Role?     @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+  userLocations UserLocation[]
 
   @@map("siteusers")
 }
@@ -449,8 +450,22 @@ model Location {
   RoomTypeDuration RoomTypeDuration[]
   transactions     Transaction[]
   billingPolicies  BillingPolicy[]
+  userLocations UserLocation[]
 
   @@map("locations")
+}
+
+model UserLocation {
+  user_id     String
+  location_id Int
+
+  createdAt DateTime @default(now())
+  user      SiteUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  location  Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, location_id])
+  @@index([location_id])
+  @@map("user_locations")
 }
 
 model BillingPolicy {
