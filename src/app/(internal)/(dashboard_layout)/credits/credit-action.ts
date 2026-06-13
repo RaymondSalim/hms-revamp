@@ -13,6 +13,9 @@ import { revalidatePath } from "next/cache";
  * subtracting any credit refunds (EXPENSE transactions tagged with credit_refund).
  */
 export async function getAvailableCredit(bookingId: number): Promise<number> {
+  const { authorized } = await checkPermission("payments.view");
+  if (!authorized) return 0;
+
   const payments = await prisma.payment.findMany({
     where: { booking_id: bookingId },
     select: { id: true },

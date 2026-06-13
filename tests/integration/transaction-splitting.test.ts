@@ -3,7 +3,7 @@ import "../helpers/mock-next";
 import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 
 import { createOrUpdatePaymentTransactions, deletePaymentAction } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
-import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 
 describe("Transaction Splitting (BL-005)", () => {
   beforeEach(async () => {

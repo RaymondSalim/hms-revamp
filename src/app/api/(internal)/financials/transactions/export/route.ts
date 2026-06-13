@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/_lib/auth";
 import { prisma } from "@/app/_lib/prisma";
+import { checkPermission } from "@/app/_lib/rbac";
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { authorized } = await checkPermission("financials.export");
+  if (!authorized)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const exportFormat = searchParams.get("format"); // "xlsx" or "pdf"
@@ -113,12 +122,12 @@ export async function GET(request: NextRequest) {
   const html = `<!DOCTYPE html><html><head><title>Transaksi Keuangan</title>
     <style>body{font-family:sans-serif;margin:40px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5}.income{color:green}.expense{color:red}</style></head>
     <body><h1>Laporan Transaksi Keuangan</h1>
-    <p>Periode: ${startDate || "Semua waktu"} s/d ${endDate || "Semua waktu"}</p>
+    <p>Periode: ${escapeHtml(startDate || "Semua waktu")} s/d ${escapeHtml(endDate || "Semua waktu")}</p>
     <table><tr><th>Tanggal</th><th>Deskripsi</th><th>Kategori</th><th>Tipe</th><th>Jumlah</th></tr>
     ${transactions
       .map(
         (t) =>
-          `<tr><td>${format(t.date, "dd/MM/yyyy")}</td><td>${t.description}</td><td>${t.category || "-"}</td><td class="${t.type.toLowerCase()}">${t.type}</td><td>Rp${Number(t.amount).toLocaleString("id-ID")}</td></tr>`
+          `<tr><td>${format(t.date, "dd/MM/yyyy")}</td><td>${escapeHtml(t.description)}</td><td>${escapeHtml(t.category || "-")}</td><td class="${escapeHtml(t.type.toLowerCase())}">${escapeHtml(t.type)}</td><td>Rp${Number(t.amount).toLocaleString("id-ID")}</td></tr>`
       )
       .join("")}
     <tr><td colspan="4"><strong>Total Pemasukan</strong></td><td><strong>Rp${totalIncome.toLocaleString("id-ID")}</strong></td></tr>

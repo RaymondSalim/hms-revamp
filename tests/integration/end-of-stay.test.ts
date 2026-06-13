@@ -7,7 +7,7 @@ import {
   scheduleEndOfStayAction,
 } from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
-import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 
 describe("End of Stay (BL-033)", () => {
   beforeEach(async () => {

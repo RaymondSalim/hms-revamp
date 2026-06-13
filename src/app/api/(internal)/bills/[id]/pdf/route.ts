@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/_lib/auth";
 import { prisma } from "@/app/_lib/prisma";
+import { checkPermission } from "@/app/_lib/rbac";
 import { computeInvoiceTotals } from "@/app/_lib/util/invoice-totals";
 import PDFDocument from "pdfkit";
 import { format } from "date-fns";
@@ -16,9 +16,9 @@ export async function GET(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { authorized } = await checkPermission("bills.view");
+  if (!authorized)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
   const { id } = await ctx.params;
   const billId = Number(id);

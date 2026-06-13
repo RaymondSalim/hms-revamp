@@ -2,7 +2,7 @@
 
 import { prisma } from "@/app/_lib/prisma";
 import { uploadToS3, deleteFromS3 } from "@/app/_lib/s3";
-import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 import { paymentSchema } from "@/app/_lib/zod/payment/zod";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";

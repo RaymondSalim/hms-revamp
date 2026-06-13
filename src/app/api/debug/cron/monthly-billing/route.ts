@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/_lib/auth";
 import { prisma } from "@/app/_lib/prisma";
+import { checkPermission } from "@/app/_lib/rbac";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const { authorized } = await checkPermission("bills.manage");
+  if (!authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const targetDate = searchParams.get("target_date")

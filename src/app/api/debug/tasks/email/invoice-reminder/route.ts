@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/_lib/auth";
 import { prisma } from "@/app/_lib/prisma";
+import { checkPermission } from "@/app/_lib/rbac";
 import { addDays } from "date-fns";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const { authorized } = await checkPermission("bills.view");
+  if (!authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
   const targetDate = new Date();
   const dueWindow = addDays(targetDate, 7);

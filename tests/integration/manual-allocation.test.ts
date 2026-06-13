@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import "../helpers/mock-next";
 import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 
-import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 
 describe("Manual Allocation Protection", () => {
   beforeEach(async () => {

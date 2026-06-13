@@ -4,12 +4,16 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
 import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 
 // BL-003: Payment Auto-Allocation Simulation
 export async function simulateUnpaidBillPaymentAction(
   bookingId: number,
   paymentAmount: number
 ) {
+  const { authorized } = await checkPermission("payments.view");
+  if (!authorized) return [];
+
   const bills = await prisma.bill.findMany({
     where: { booking_id: bookingId },
     include: { bill_item: true, paymentBills: true },
@@ -40,80 +44,6 @@ export async function simulateUnpaidBillPaymentAction(
   }
 
   return allocations;
-}
-
-// BL-014: Deterministic Regeneration of Payment-Bill Mappings
-export async function generatePaymentBillMappingFromPaymentsAndBills(
-  bookingId: number
-) {
-  const allPayments = await prisma.payment.findMany({
-    where: { booking_id: bookingId },
-    orderBy: { payment_date: "asc" },
-  });
-
-  const bills = await prisma.bill.findMany({
-    where: { booking_id: bookingId },
-    include: { bill_item: true },
-    orderBy: { due_date: "asc" },
-  });
-
-  // Separate manual and auto payments
-  const autoPayments = allPayments.filter((p) => p.allocation_mode !== "manual");
-  const manualPayments = allPayments.filter((p) => p.allocation_mode === "manual");
-
-  // Only delete PaymentBill records for AUTO payments
-  const autoPaymentIds = autoPayments.map((p) => p.id);
-  if (autoPaymentIds.length > 0) {
-    await prisma.paymentBill.deleteMany({
-      where: { payment_id: { in: autoPaymentIds } },
-    });
-  }
-
-  // Calculate how much each bill already has from manual allocations
-  const manualBillAllocated = new Map<number, number>();
-  if (manualPayments.length > 0) {
-    const manualMappings = await prisma.paymentBill.findMany({
-      where: { payment_id: { in: manualPayments.map((p) => p.id) } },
-    });
-    for (const m of manualMappings) {
-      manualBillAllocated.set(
-        m.bill_id,
-        (manualBillAllocated.get(m.bill_id) || 0) + Number(m.amount)
-      );
-    }
-  }
-
-  // Track cumulative allocations per bill (starting from manual amounts)
-  const billAllocated = new Map<number, number>(manualBillAllocated);
-
-  for (const payment of autoPayments) {
-    let remainingPayment = Number(payment.amount);
-
-    for (const bill of bills) {
-      if (remainingPayment <= 0) break;
-
-      const billTotal = bill.bill_item.reduce(
-        (s, i) => s + Number(i.amount),
-        0
-      );
-      const alreadyAllocated = billAllocated.get(bill.id) || 0;
-      const outstanding = billTotal - alreadyAllocated;
-
-      if (outstanding <= 0) continue;
-
-      const allocated = Math.min(remainingPayment, outstanding);
-      await prisma.paymentBill.create({
-        data: {
-          payment_id: payment.id,
-          bill_id: bill.id,
-          amount: allocated,
-        },
-      });
-
-      billAllocated.set(bill.id, alreadyAllocated + allocated);
-      remainingPayment -= allocated;
-    }
-  }
 }
 
 // --- Bill CRUD Actions ---
@@ -246,27 +176,4 @@ export async function deleteBillItemAction(itemId: number) {
   await generatePaymentBillMappingFromPaymentsAndBills(item.bill.booking_id);
   revalidatePath("/bills");
   return { success: true };
-}
-
-// BL-026: Get unpaid bills due within 7 days for email reminders
-export async function getUnpaidBillsDueAction(targetDate: Date) {
-  const { addDays } = await import("date-fns");
-  const dueWindow = addDays(targetDate, 7);
-
-  const bills = await prisma.bill.findMany({
-    where: { due_date: { gte: targetDate, lte: dueWindow } },
-    include: {
-      bill_item: true,
-      paymentBills: true,
-      bookings: {
-        include: { tenants: true, rooms: { include: { locations: true } } },
-      },
-    },
-  });
-
-  return bills.filter((bill) => {
-    const total = bill.bill_item.reduce((s, i) => s + Number(i.amount), 0);
-    const paid = bill.paymentBills.reduce((s, p) => s + Number(p.amount), 0);
-    return total - paid > 0 && bill.bookings.tenants?.email;
-  });
 }
