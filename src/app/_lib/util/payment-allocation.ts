@@ -19,12 +19,27 @@ export async function generatePaymentBillMappingFromPaymentsAndBills(
     orderBy: { due_date: "asc" },
   });
 
-  // Separate manual and auto payments
-  const autoPayments = allPayments.filter((p) => p.allocation_mode !== "manual");
+  // Only VERIFIED payments may reduce a bill's outstanding balance. status_id
+  // 1=PENDING, 2=VERIFIED, 3=REJECTED; null=legacy/assumed-verified. This mirrors
+  // the verification gate in createOrUpdatePaymentTransactions so a pending or
+  // rejected payment can't make a bill look paid.
+  const isVerified = (statusId: number | null) =>
+    statusId === null || statusId === 2;
+
+  // Separate manual and auto payments. All auto PaymentBill rows are deleted and
+  // regenerated below; we only ever recreate them for verified auto payments, so
+  // a pending/rejected auto payment ends up with no allocation.
+  const autoPayments = allPayments.filter(
+    (p) => p.allocation_mode !== "manual" && isVerified(p.status_id)
+  );
+  const allAutoPayments = allPayments.filter(
+    (p) => p.allocation_mode !== "manual"
+  );
   const manualPayments = allPayments.filter((p) => p.allocation_mode === "manual");
 
-  // Only delete PaymentBill records for AUTO payments
-  const autoPaymentIds = autoPayments.map((p) => p.id);
+  // Only delete PaymentBill records for AUTO payments (including unverified ones,
+  // so a payment that drops from VERIFIED back to PENDING loses its allocation).
+  const autoPaymentIds = allAutoPayments.map((p) => p.id);
   if (autoPaymentIds.length > 0) {
     await prisma.paymentBill.deleteMany({
       where: { payment_id: { in: autoPaymentIds } },

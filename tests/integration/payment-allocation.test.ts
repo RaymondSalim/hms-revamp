@@ -302,6 +302,133 @@ describe("Payment Auto-Allocation", () => {
     });
   });
 
+  describe("Verification gate (BL-009): only VERIFIED payments allocate", () => {
+    it("should not allocate a PENDING auto payment", async () => {
+      const { room, tenant } = await createBaseData();
+      const { booking } = await createBookingWithBills(room.id, tenant.id, [
+        1000000,
+      ]);
+
+      // status_id 1 = PENDING
+      const pending = await testPrisma.payment.create({
+        data: {
+          booking_id: booking.id,
+          amount: 1000000,
+          payment_date: new Date("2025-01-10"),
+          status_id: 1,
+        },
+      });
+
+      await generatePaymentBillMappingFromPaymentsAndBills(booking.id);
+
+      const mappings = await testPrisma.paymentBill.findMany({
+        where: { payment_id: pending.id },
+      });
+      expect(mappings).toHaveLength(0);
+    });
+
+    it("should not allocate a REJECTED auto payment", async () => {
+      const { room, tenant } = await createBaseData();
+      const { booking } = await createBookingWithBills(room.id, tenant.id, [
+        1000000,
+      ]);
+
+      // status_id 3 = REJECTED
+      const rejected = await testPrisma.payment.create({
+        data: {
+          booking_id: booking.id,
+          amount: 1000000,
+          payment_date: new Date("2025-01-10"),
+          status_id: 3,
+        },
+      });
+
+      await generatePaymentBillMappingFromPaymentsAndBills(booking.id);
+
+      const mappings = await testPrisma.paymentBill.findMany({
+        where: { payment_id: rejected.id },
+      });
+      expect(mappings).toHaveLength(0);
+    });
+
+    it("should allocate a VERIFIED payment but not a PENDING one on the same booking", async () => {
+      const { room, tenant } = await createBaseData();
+      const { booking, bills } = await createBookingWithBills(
+        room.id,
+        tenant.id,
+        [1000000, 1000000]
+      );
+
+      // status_id 2 = VERIFIED
+      const verified = await testPrisma.payment.create({
+        data: {
+          booking_id: booking.id,
+          amount: 1000000,
+          payment_date: new Date("2025-01-10"),
+          status_id: 2,
+        },
+      });
+      const pending = await testPrisma.payment.create({
+        data: {
+          booking_id: booking.id,
+          amount: 1000000,
+          payment_date: new Date("2025-01-20"),
+          status_id: 1,
+        },
+      });
+
+      await generatePaymentBillMappingFromPaymentsAndBills(booking.id);
+
+      const verifiedMappings = await testPrisma.paymentBill.findMany({
+        where: { payment_id: verified.id },
+      });
+      expect(verifiedMappings).toHaveLength(1);
+      expect(verifiedMappings[0].bill_id).toBe(bills[0].id);
+      expect(Number(verifiedMappings[0].amount)).toBe(1000000);
+
+      const pendingMappings = await testPrisma.paymentBill.findMany({
+        where: { payment_id: pending.id },
+      });
+      expect(pendingMappings).toHaveLength(0);
+    });
+
+    it("should drop allocation when a payment is demoted from VERIFIED to PENDING", async () => {
+      const { room, tenant } = await createBaseData();
+      const { booking } = await createBookingWithBills(room.id, tenant.id, [
+        1000000,
+      ]);
+
+      const payment = await testPrisma.payment.create({
+        data: {
+          booking_id: booking.id,
+          amount: 1000000,
+          payment_date: new Date("2025-01-10"),
+          status_id: 2,
+        },
+      });
+
+      await generatePaymentBillMappingFromPaymentsAndBills(booking.id);
+      expect(
+        await testPrisma.paymentBill.count({
+          where: { payment_id: payment.id },
+        })
+      ).toBe(1);
+
+      // Demote to PENDING and regenerate
+      await testPrisma.payment.update({
+        where: { id: payment.id },
+        data: { status_id: 1 },
+      });
+      await generatePaymentBillMappingFromPaymentsAndBills(booking.id);
+
+      expect(
+        await testPrisma.paymentBill.count({
+          where: { payment_id: payment.id },
+        })
+      ).toBe(0);
+    });
+  });
+
   describe("Deposit-first priority in allocation", () => {
     it("should allocate to deposit item before room fee in bill", async () => {
       const { room, tenant } = await createBaseData();
