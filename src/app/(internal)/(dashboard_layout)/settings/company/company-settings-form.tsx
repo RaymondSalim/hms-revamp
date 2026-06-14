@@ -15,12 +15,17 @@ const inputStyle = {
 export function CompanySettingsForm({
   initialName,
   initialImage,
+  initialRegistrationEnabled,
 }: {
   initialName: string;
   initialImage: string;
+  initialRegistrationEnabled: boolean;
 }) {
   const [name, setName] = useState(initialName);
   const [image, setImage] = useState(initialImage);
+  const [registrationEnabled, setRegistrationEnabled] = useState(
+    initialRegistrationEnabled,
+  );
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +37,7 @@ export function CompanySettingsForm({
       const result = await updateCompanySettingsAction({
         companyName: name,
         companyImage: image,
+        registrationEnabled,
       });
       if (result.success) setSaved(true);
       else setError(result.error ?? "Gagal menyimpan");
@@ -128,6 +134,53 @@ export function CompanySettingsForm({
               setSaved(false);
             }}
           />
+        </div>
+
+        <div
+          className="flex items-start justify-between gap-4 border-t pt-5"
+          style={{ borderColor: "var(--color-border)" }}
+        >
+          <div className="space-y-1">
+            <label
+              className="text-sm font-medium"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              Pendaftaran Mandiri
+            </label>
+            <p
+              className="text-xs"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              Izinkan orang membuat akun sendiri melalui halaman pendaftaran.
+              Akun baru tidak memiliki hak akses apa pun hingga admin
+              menetapkan peran dan lokasi. Sebaiknya tetap nonaktif kecuali
+              sedang dibutuhkan.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={registrationEnabled}
+            onClick={() => {
+              setRegistrationEnabled((v) => !v);
+              setSaved(false);
+            }}
+            className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+            style={{
+              backgroundColor: registrationEnabled
+                ? "var(--color-accent)"
+                : "var(--color-border)",
+            }}
+          >
+            <span
+              className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+              style={{
+                transform: registrationEnabled
+                  ? "translateX(1.5rem)"
+                  : "translateX(0.25rem)",
+              }}
+            />
+          </button>
         </div>
       </div>
     </div>

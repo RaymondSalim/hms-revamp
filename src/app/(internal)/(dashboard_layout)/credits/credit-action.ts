@@ -4,6 +4,10 @@ import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
 import { roundMoney } from "@/app/_lib/util/money";
+import {
+  getScopedLocationIds,
+  isLocationInScope,
+} from "@/app/_lib/util/location-scope";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -19,6 +23,18 @@ import { revalidatePath } from "next/cache";
 export async function getAvailableCredit(bookingId: number): Promise<number> {
   const { authorized } = await checkPermission("payments.view");
   if (!authorized) return 0;
+
+  // A scoped user must not see credit for bookings outside their locations.
+  // Return 0 (as if no credit) rather than throwing, since this feeds UI totals.
+  const scopeBooking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const scopeLocationId = scopeBooking?.rooms?.location_id ?? null;
+  const scope = await getScopedLocationIds();
+  if (scopeLocationId == null || !isLocationInScope(scope, scopeLocationId)) {
+    return 0;
+  }
 
   const payments = await prisma.payment.findMany({
     where: { booking_id: bookingId, deletedAt: null },
@@ -86,6 +102,11 @@ export async function refundCreditAction(
   const locationId = booking?.rooms?.location_id;
   if (!locationId) {
     return { success: false, error: "Lokasi tidak ditemukan" };
+  }
+
+  const scope = await getScopedLocationIds();
+  if (!isLocationInScope(scope, locationId)) {
+    return { success: false, error: "Unauthorized" };
   }
 
   // Negative CREDIT: draws down the overpayment liability without hitting P&L.

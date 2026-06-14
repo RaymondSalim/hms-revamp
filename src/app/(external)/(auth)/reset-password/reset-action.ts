@@ -10,7 +10,13 @@ export async function resetPasswordAction(formData: { email: string }) {
   const user = await getUserByEmail(formData.email);
   if (!user) return { success: true as const };
 
-  const newPassword = crypto.randomBytes(4).toString("hex"); // 8 chars
+  // 16 bytes = 128 bits of entropy (32 hex chars). The previous 4-byte token was
+  // only 32 bits — brute-forceable. It is still emailed in cleartext as a
+  // one-time password, but shouldReset forces the user to change it on first
+  // login, so the window is a single sign-in. A full tokenized reset-link flow
+  // (store a VerificationToken, email a link, set password behind it) is the
+  // stronger design and is tracked as a follow-up.
+  const newPassword = crypto.randomBytes(16).toString("hex");
   const hashed = await bcrypt.hash(newPassword, 10);
   await updateUser(user.id, { password: hashed, shouldReset: true });
 

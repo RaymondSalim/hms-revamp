@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
+import {
+  getScopedLocationIds,
+  isLocationInScope,
+} from "@/app/_lib/util/location-scope";
 import { computeInvoiceTotals } from "@/app/_lib/util/invoice-totals";
 import PDFDocument from "pdfkit";
 import { formatUtcDate } from "@/app/_lib/util/business-time";
@@ -41,6 +45,15 @@ export async function GET(
 
   if (!bill)
     return NextResponse.json({ error: "Bill not found" }, { status: 404 });
+
+  // Location-scope guard: a scoped user must not download invoices for bookings
+  // outside their locations. Resolve the owning location and 404 (not 403) on a
+  // miss so we don't confirm the bill exists to an out-of-scope caller.
+  const billLocationId = bill.bookings?.rooms?.location_id ?? null;
+  const scope = await getScopedLocationIds();
+  if (billLocationId == null || !isLocationInScope(scope, billLocationId)) {
+    return NextResponse.json({ error: "Bill not found" }, { status: 404 });
+  }
 
   const { subtotal, tax, total, paid, outstanding } = computeInvoiceTotals(
     bill.bill_item.map((i) => ({

@@ -9,6 +9,7 @@ import { validateImageDataUrl } from "@/app/_lib/util/image-data-url";
 export interface CompanySettingsInput {
   companyName: string;
   companyImage: string;
+  registrationEnabled: boolean;
 }
 
 export async function updateCompanySettingsAction(input: CompanySettingsInput) {
@@ -30,8 +31,14 @@ export async function updateCompanySettingsAction(input: CompanySettingsInput) {
   try {
     await upsertSetting("COMPANY_NAME", input.companyName.trim());
     await upsertSetting("COMPANY_IMAGE", input.companyImage);
+    await upsertSetting(
+      "REGISTRATION_ENABLED",
+      input.registrationEnabled ? "true" : "false",
+    );
 
-    await logAudit(`company_settings.update: name=${input.companyName.trim()}`);
+    await logAudit(
+      `company_settings.update: name=${input.companyName.trim()}, registration=${input.registrationEnabled}`,
+    );
     revalidatePath("/settings/company");
     revalidatePath("/", "layout");
     return { success: true as const };

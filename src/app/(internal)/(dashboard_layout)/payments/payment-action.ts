@@ -9,6 +9,7 @@ import { paymentSchema } from "@/app/_lib/zod/payment/zod";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
 import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
+import { validateUploadDataUrl } from "@/app/_lib/util/upload-file";
 import { logAudit } from "@/app/_lib/audit";
 
 // BL-005: Transaction Splitting.
@@ -264,12 +265,13 @@ export async function upsertPaymentAction(data: {
   // Handle S3 upload for payment proof
   let proofKey: string | undefined;
   if (data.payment_proof && data.payment_proof_name) {
-    const base64Data = data.payment_proof.replace(/^data:[^;]+;base64,/, "");
-    const buffer = Buffer.from(base64Data, "base64");
+    const upload = validateUploadDataUrl(data.payment_proof);
+    if (!upload.ok) {
+      return { success: false, error: upload.error };
+    }
     const timestamp = new Date().toISOString();
     const key = `booking-payments/${data.booking_id}/${timestamp}/${data.payment_proof_name}`;
-    const mimeType = data.payment_proof.match(/^data:([^;]+);/)?.[1] ?? "application/octet-stream";
-    await uploadToS3(key, buffer, mimeType);
+    await uploadToS3(key, upload.buffer, upload.mime);
     proofKey = key;
   }
 

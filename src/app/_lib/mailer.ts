@@ -48,7 +48,7 @@ export async function sendBillReminderEmail(bill: any) {
     due_date: bill.due_date.toLocaleDateString("id-ID"),
   };
   const subject = renderTemplate(template.subject, vars);
-  const html = renderTemplate(template.body_html, vars);
+  const html = renderTemplate(template.body_html, vars, true);
 
   try {
     await transporter.sendMail({
@@ -88,7 +88,7 @@ export async function sendPasswordResetEmail(
   const template = await getTemplateOrDefault("PASSWORD_RESET");
   const vars: Record<string, string> = { new_password: newPassword };
   const subject = renderTemplate(template.subject, vars);
-  const html = renderTemplate(template.body_html, vars);
+  const html = renderTemplate(template.body_html, vars, true);
 
   try {
     await transporter.sendMail({

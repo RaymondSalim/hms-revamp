@@ -5,18 +5,34 @@ import {
   type EmailTemplateKey,
 } from "@/app/_lib/email/template-keys";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * Replace every {{ name }} token in `text` with vars[name]. Tokens whose name
  * has no entry in `vars` are left untouched. Pure: string in, string out.
+ *
+ * Pass `escapeValues: true` when rendering into an HTML body so that
+ * attacker-controlled values (tenant names, bill descriptions) cannot inject
+ * markup/script. Leave it false for plain-text contexts like the subject line,
+ * where HTML-escaping would corrupt characters such as `&`.
  */
 export function renderTemplate(
   text: string,
-  vars: Record<string, string>
+  vars: Record<string, string>,
+  escapeValues = false
 ): string {
   return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, name) => {
-    return Object.prototype.hasOwnProperty.call(vars, name)
-      ? vars[name]
-      : match;
+    if (!Object.prototype.hasOwnProperty.call(vars, name)) {
+      return match;
+    }
+    return escapeValues ? escapeHtml(vars[name]) : vars[name];
   });
 }
 

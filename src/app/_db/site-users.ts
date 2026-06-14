@@ -48,7 +48,7 @@ export async function getAllUsers() {
   });
 }
 
-export async function createUser(data: { name: string; email: string; password: string; role_id: number }) {
+export async function createUser(data: { name: string; email: string; password: string; role_id?: number | null }) {
   return prisma.siteUser.create({ data });
 }
 
