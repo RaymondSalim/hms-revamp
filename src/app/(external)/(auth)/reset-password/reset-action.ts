@@ -1,26 +1,40 @@
 "use server";
 
-import bcrypt from "bcrypt";
-import { getUserByEmail, updateUser } from "@/app/_db/site-users";
+import { prisma } from "@/app/_lib/prisma";
+import { getUserByEmail } from "@/app/_db/site-users";
 import { sendPasswordResetEmail } from "@/app/_lib/mailer";
-import crypto from "crypto";
+import {
+  generateResetToken,
+  hashResetToken,
+  getAppBaseUrl,
+  RESET_TOKEN_TTL_MS,
+} from "@/app/_lib/util/reset-token";
 
 export async function resetPasswordAction(formData: { email: string }) {
-  // Always return success (don't reveal if email exists)
+  // Always return success so this endpoint never reveals which emails exist.
   const user = await getUserByEmail(formData.email);
   if (!user) return { success: true as const };
 
-  // 16 bytes = 128 bits of entropy (32 hex chars). The previous 4-byte token was
-  // only 32 bits — brute-forceable. It is still emailed in cleartext as a
-  // one-time password, but shouldReset forces the user to change it on first
-  // login, so the window is a single sign-in. A full tokenized reset-link flow
-  // (store a VerificationToken, email a link, set password behind it) is the
-  // stronger design and is tracked as a follow-up.
-  const newPassword = crypto.randomBytes(16).toString("hex");
-  const hashed = await bcrypt.hash(newPassword, 10);
-  await updateUser(user.id, { password: hashed, shouldReset: true });
+  // Issue a fresh single-use token. Only its hash is stored, so a leaked DB
+  // cannot be used to reset anyone's password. Clearing prior tokens for this
+  // email invalidates any earlier link the user may have requested.
+  const token = generateResetToken();
+  const tokenHash = hashResetToken(token);
+  const expires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
 
-  await sendPasswordResetEmail(user.email, newPassword);
+  await prisma.$transaction([
+    prisma.verificationToken.deleteMany({
+      where: { identifier: user.email },
+    }),
+    prisma.verificationToken.create({
+      data: { identifier: user.email, token: tokenHash, expires },
+    }),
+  ]);
+
+  const params = new URLSearchParams({ token, email: user.email });
+  const resetLink = `${getAppBaseUrl()}/reset-password/confirm?${params.toString()}`;
+
+  await sendPasswordResetEmail(user.email, resetLink);
 
   return { success: true as const };
 }

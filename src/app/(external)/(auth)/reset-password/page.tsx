@@ -28,8 +28,8 @@ export default function ResetPasswordPage() {
         {submitted ? (
           <div className="text-center space-y-4">
             <div className="text-green-600 bg-green-50 p-4 rounded-md">
-              Jika alamat email terdaftar, kami telah mengirimkan kata sandi baru
-              ke email Anda.
+              Jika alamat email terdaftar, kami telah mengirimkan tautan untuk
+              mengatur ulang kata sandi ke email Anda. Tautan berlaku 1 jam.
             </div>
             <Link
               href="/login"
@@ -41,8 +41,8 @@ export default function ResetPasswordPage() {
         ) : (
           <>
             <p className="text-sm text-gray-600 mb-4 text-center">
-              Masukkan alamat email Anda dan kami akan mengirimkan kata sandi
-              baru.
+              Masukkan alamat email Anda dan kami akan mengirimkan tautan untuk
+              mengatur ulang kata sandi.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">

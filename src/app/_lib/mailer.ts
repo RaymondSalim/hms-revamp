@@ -81,12 +81,9 @@ export async function sendBillReminderEmail(bill: any) {
   }
 }
 
-export async function sendPasswordResetEmail(
-  email: string,
-  newPassword: string,
-) {
+export async function sendPasswordResetEmail(email: string, resetLink: string) {
   const template = await getTemplateOrDefault("PASSWORD_RESET");
-  const vars: Record<string, string> = { new_password: newPassword };
+  const vars: Record<string, string> = { reset_link: resetLink };
   const subject = renderTemplate(template.subject, vars);
   const html = renderTemplate(template.body_html, vars, true);
 

@@ -15,7 +15,7 @@ export const TEMPLATE_VARIABLES: Record<EmailTemplateKey, string[]> = {
     "outstanding",
     "due_date",
   ],
-  PASSWORD_RESET: ["new_password"],
+  PASSWORD_RESET: ["reset_link"],
 };
 
 export interface EmailTemplateContent {
@@ -46,9 +46,10 @@ export const DEFAULT_TEMPLATES: Record<EmailTemplateKey, EmailTemplateContent> =
     PASSWORD_RESET: {
       subject: "Reset Password - MICASA Suites",
       body_html: `
-    <p>Password Anda telah direset.</p>
-    <p>Password baru Anda: <strong>{{new_password}}</strong></p>
-    <p>Silakan login dan ubah password Anda segera.</p>
+    <p>Kami menerima permintaan untuk mengatur ulang kata sandi Anda.</p>
+    <p>Klik tautan berikut untuk membuat kata sandi baru:</p>
+    <p><a href="{{reset_link}}">{{reset_link}}</a></p>
+    <p>Tautan ini berlaku selama 1 jam. Jika Anda tidak meminta ini, abaikan email ini.</p>
   `,
     },
   };
