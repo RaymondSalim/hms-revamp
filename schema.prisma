@@ -57,13 +57,13 @@ model CheckInOutLog {
   booking_id Int
   event_type String   @db.VarChar(255)
   event_date DateTime @db.Date
-  tenant_id  String
+  tenant_id  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
   bookings Booking @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tenant   Tenant  @relation(fields: [tenant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  tenant   Tenant?  @relation(fields: [tenant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@map("checkinoutlogs")
 }
