@@ -13,6 +13,7 @@ async function runMonthlyBilling() {
       is_rolling: true,
       end_date: null,
       status_id: 2, // ACTIVE
+      deletedAt: null,
     },
     include: {
       rooms: { include: { roomtypes: true, locations: true } },
@@ -20,7 +21,7 @@ async function runMonthlyBilling() {
       durations: true,
       deposit: true,
       addOns: { include: { addOn: { include: { pricing: true } } } },
-      bills: { include: { bill_item: true } },
+      bills: { where: { deletedAt: null }, include: { bill_item: true } },
     },
   });
 

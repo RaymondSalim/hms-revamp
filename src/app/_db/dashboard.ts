@@ -10,14 +10,14 @@ export async function getCheckInOutCounts(locationId: number) {
     where: {
       event_type: "CHECK_IN",
       event_date: { gte: today, lt: tomorrow },
-      bookings: { rooms: { location_id: locationId } },
+      bookings: { rooms: { location_id: locationId }, deletedAt: null },
     },
   });
   const checkOuts = await prisma.checkInOutLog.count({
     where: {
       event_type: "CHECK_OUT",
       event_date: { gte: today, lt: tomorrow },
-      bookings: { rooms: { location_id: locationId } },
+      bookings: { rooms: { location_id: locationId }, deletedAt: null },
     },
   });
   return { checkIns, checkOuts };
@@ -67,6 +67,7 @@ export async function getOccupancyRate(locationId: number, asOf?: Date) {
       start_date: { lte: now },
       OR: [{ end_date: null }, { end_date: { gte: now } }],
       rooms: { location_id: locationId },
+      deletedAt: null,
     },
     select: { room_id: true },
   });
@@ -85,7 +86,7 @@ export async function getOccupancyRate(locationId: number, asOf?: Date) {
 
 export async function getRecentPayments(locationId: number, limit = 5) {
   return prisma.payment.findMany({
-    where: { bookings: { rooms: { location_id: locationId } } },
+    where: { bookings: { rooms: { location_id: locationId } }, deletedAt: null },
     include: {
       bookings: { include: { tenants: true, rooms: true } },
       paymentstatuses: true,
@@ -97,7 +98,7 @@ export async function getRecentPayments(locationId: number, limit = 5) {
 
 export async function getOutstandingBills(locationId: number, limit = 5) {
   const bills = await prisma.bill.findMany({
-    where: { bookings: { rooms: { location_id: locationId } } },
+    where: { bookings: { rooms: { location_id: locationId } }, deletedAt: null },
     include: {
       bill_item: true,
       paymentBills: true,
@@ -124,7 +125,7 @@ export async function getUpcomingEvents(limit = 5) {
 
 export async function getRecentTransactions(locationId: number, limit = 10) {
   return prisma.transaction.findMany({
-    where: { location_id: locationId },
+    where: { location_id: locationId, deletedAt: null },
     orderBy: { date: "desc" },
     take: limit,
   });
@@ -146,6 +147,7 @@ export async function getGroupedIncomeExpense(params: {
   const whereClause: any = {
     location_id: locationId,
     date: { gte: startDate, lte: endDate },
+    deletedAt: null,
   };
 
   if (splitDeposit) {
@@ -163,6 +165,7 @@ export async function getGroupedIncomeExpense(params: {
           location_id: locationId,
           date: { gte: startDate, lte: endDate },
           category: "Deposit",
+          deletedAt: null,
         },
         orderBy: { date: "asc" },
       })

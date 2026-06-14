@@ -21,6 +21,7 @@ model Booking {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+  deletedAt DateTime?
 
   addOns          BookingAddOn[]
   bills           Bill[]
@@ -90,6 +91,7 @@ model Transaction {
 
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @default(now()) @updatedAt
+  deletedAt   DateTime?
   location_id Int
   type        TransactionType
   related_id  Json?
@@ -146,6 +148,7 @@ model Bill {
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now()) @updatedAt
+  deletedAt    DateTime?
   bill_item    BillItem[]
   bookings     Booking       @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   paymentBills PaymentBill[]
@@ -200,6 +203,7 @@ model Payment {
 
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt
+  deletedAt       DateTime?
   paymentBills    PaymentBill[]
   bookings        Booking        @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   paymentstatuses PaymentStatus? @relation(fields: [status_id], references: [id], onUpdate: NoAction)

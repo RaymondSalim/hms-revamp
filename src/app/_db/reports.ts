@@ -63,10 +63,12 @@ export async function getAgingReport(
   const now = asOf ?? new Date();
 
   const bills = await prisma.bill.findMany({
-    where:
-      locationId != null
+    where: {
+      deletedAt: null,
+      ...(locationId != null
         ? { bookings: { rooms: { location_id: locationId } } }
-        : undefined,
+        : {}),
+    },
     include: {
       bill_item: true,
       paymentBills: true,

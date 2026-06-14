@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const enabled = setting?.setting_value?.toLowerCase() === "true";
 
   const bills = await prisma.bill.findMany({
-    where: { due_date: { gte: targetDate, lte: dueWindow } },
+    where: { due_date: { gte: targetDate, lte: dueWindow }, deletedAt: null, bookings: { deletedAt: null } },
     include: {
       bill_item: true,
       paymentBills: true,

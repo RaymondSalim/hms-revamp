@@ -3,7 +3,7 @@ import type { LocationScope } from "@/app/_lib/util/location-scope";
 
 export async function getPaymentsByBooking(bookingId: number) {
   return prisma.payment.findMany({
-    where: { booking_id: bookingId },
+    where: { booking_id: bookingId, deletedAt: null },
     include: { paymentBills: true, paymentstatuses: true },
     orderBy: { payment_date: "asc" },
   });
@@ -13,6 +13,7 @@ export async function getPaymentById(id: number, scope: LocationScope) {
   return prisma.payment.findFirst({
     where: {
       id,
+      deletedAt: null,
       ...(scope === null ? {} : { bookings: { rooms: { location_id: { in: scope } } } }),
     },
     include: { paymentBills: { include: { bill: { include: { bill_item: true } } } }, paymentstatuses: true, bookings: { include: { rooms: true, tenants: true } } },

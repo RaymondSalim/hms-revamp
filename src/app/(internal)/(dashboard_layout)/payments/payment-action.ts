@@ -188,6 +188,7 @@ async function checkDepositRevert(bookingId: number) {
     where: {
       related_id: { path: ["deposit_id"], equals: deposit.id },
       type: "INCOME",
+      deletedAt: null,
     },
   });
 
@@ -357,25 +358,29 @@ export async function deletePaymentAction(paymentId: number) {
 
   const bookingId = payment.booking_id;
 
-  // Delete transactions linked to payment
-  await prisma.transaction.deleteMany({
-    where: { related_id: { path: ["payment_id"], equals: paymentId } },
+  // Soft-delete: stamp the payment and its transactions so the audit ledger
+  // is preserved. PaymentBills are derived allocation mappings (rebuilt
+  // idempotently below), not audit records, so they are removed to avoid the
+  // still-active bill appearing paid by a deleted payment.
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.updateMany({
+      where: { related_id: { path: ["payment_id"], equals: paymentId } },
+      data: { deletedAt: now },
+    });
+    await tx.paymentBill.deleteMany({ where: { payment_id: paymentId } });
+    await tx.payment.update({
+      where: { id: paymentId },
+      data: { deletedAt: now },
+    });
   });
-
-  // Delete old proof from S3
-  if (payment.payment_proof) {
-    await deleteFromS3(payment.payment_proof).catch(() => {});
-  }
-
-  // Delete payment (cascades PaymentBills)
-  await prisma.payment.delete({ where: { id: paymentId } });
 
   // BL-007: Check deposit status revert
   await checkDepositRevert(bookingId);
 
   // Regenerate remaining payment mappings if any payments left
   const remainingPayments = await prisma.payment.findMany({
-    where: { booking_id: bookingId },
+    where: { booking_id: bookingId, deletedAt: null },
   });
 
   if (remainingPayments.length > 0) {

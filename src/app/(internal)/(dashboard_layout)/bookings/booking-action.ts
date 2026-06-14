@@ -583,7 +583,7 @@ export async function upsertBookingAction(data: {
 
       // 7. Rebuild transactions for all payments
       const payments = await prisma.payment.findMany({
-        where: { booking_id: data.id },
+        where: { booking_id: data.id, deletedAt: null },
       });
       for (const p of payments) {
         await createOrUpdatePaymentTransactions(p.id);
@@ -792,7 +792,7 @@ export async function scheduleEndOfStayAction(
 
     // 4. Rebuild transactions for all payments
     const payments = await prisma.payment.findMany({
-      where: { booking_id: bookingId },
+      where: { booking_id: bookingId, deletedAt: null },
     });
     for (const p of payments) {
       await createOrUpdatePaymentTransactions(p.id);
@@ -931,7 +931,7 @@ export async function checkInOutAction(data: {
       // Reallocate payments to remaining bills
       await generatePaymentBillMappingFromPaymentsAndBills(data.booking_id);
       const payments = await prisma.payment.findMany({
-        where: { booking_id: data.booking_id },
+        where: { booking_id: data.booking_id, deletedAt: null },
       });
       for (const p of payments) {
         await createOrUpdatePaymentTransactions(p.id);
@@ -967,8 +967,38 @@ export async function deleteBookingAction(id: number) {
     const booking = await prisma.booking.findUnique({ where: { id } });
     const roomId = booking?.room_id;
 
-    // Delete booking (cascades bills, payments, etc.)
-    await prisma.booking.delete({ where: { id } });
+    // Soft-delete: stamp the booking and its financial sub-tree (bills,
+    // payments, and the payments' transactions) so the ledger is preserved
+    // for audit. All reads filter deletedAt: null, so stamped rows disappear
+    // from lists and financial totals without being destroyed.
+    const now = new Date();
+    await prisma.$transaction(async (tx) => {
+      const payments = await tx.payment.findMany({
+        where: { booking_id: id },
+        select: { id: true },
+      });
+      const paymentIds = payments.map((p) => p.id);
+
+      for (const paymentId of paymentIds) {
+        await tx.transaction.updateMany({
+          where: { related_id: { path: ["payment_id"], equals: paymentId } },
+          data: { deletedAt: now },
+        });
+      }
+
+      await tx.payment.updateMany({
+        where: { booking_id: id },
+        data: { deletedAt: now },
+      });
+      await tx.bill.updateMany({
+        where: { booking_id: id },
+        data: { deletedAt: now },
+      });
+      await tx.booking.update({
+        where: { id },
+        data: { deletedAt: now },
+      });
+    });
 
     // Reset room status to AVAILABLE (status_id 1)
     if (roomId) {
@@ -979,6 +1009,7 @@ export async function deleteBookingAction(id: number) {
     }
 
     revalidatePath("/bookings");
+    await logAudit(`booking.deleted: id=${id}`);
     return { success: true };
   } catch (e: unknown) {
     console.error("Delete booking error:", e);

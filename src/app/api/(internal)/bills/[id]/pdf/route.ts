@@ -25,8 +25,8 @@ export async function GET(
   if (Number.isNaN(billId))
     return NextResponse.json({ error: "Invalid bill id" }, { status: 400 });
 
-  const bill = await prisma.bill.findUnique({
-    where: { id: billId },
+  const bill = await prisma.bill.findFirst({
+    where: { id: billId, deletedAt: null },
     include: {
       bill_item: true,
       paymentBills: true,

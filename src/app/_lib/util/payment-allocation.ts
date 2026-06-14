@@ -9,12 +9,12 @@ export async function generatePaymentBillMappingFromPaymentsAndBills(
   bookingId: number
 ) {
   const allPayments = await prisma.payment.findMany({
-    where: { booking_id: bookingId },
+    where: { booking_id: bookingId, deletedAt: null },
     orderBy: { payment_date: "asc" },
   });
 
   const bills = await prisma.bill.findMany({
-    where: { booking_id: bookingId },
+    where: { booking_id: bookingId, deletedAt: null },
     include: { bill_item: true },
     orderBy: { due_date: "asc" },
   });

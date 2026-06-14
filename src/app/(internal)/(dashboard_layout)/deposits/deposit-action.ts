@@ -135,7 +135,7 @@ export async function updateDepositStatusAction(data: {
   if (shouldReallocate) {
     await generatePaymentBillMappingFromPaymentsAndBills(deposit.booking.id);
     const payments = await prisma.payment.findMany({
-      where: { booking_id: deposit.booking.id },
+      where: { booking_id: deposit.booking.id, deletedAt: null },
     });
     for (const p of payments) {
       await createOrUpdatePaymentTransactions(p.id);

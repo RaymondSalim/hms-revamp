@@ -25,7 +25,7 @@ export async function runBookingStatusSync() {
   const today = new Date();
 
   const bookings = await prisma.booking.findMany({
-    where: { status_id: { not: BOOKING_STATUS.CANCELLED } },
+    where: { status_id: { not: BOOKING_STATUS.CANCELLED }, deletedAt: null },
   });
 
   let updated = 0;

@@ -17,14 +17,14 @@ export async function GET(request: NextRequest) {
 
   // Same query as monthly billing
   const bookings = await prisma.booking.findMany({
-    where: { is_rolling: true, end_date: null, status_id: 2 },
+    where: { is_rolling: true, end_date: null, status_id: 2, deletedAt: null },
     include: {
       rooms: { include: { roomtypes: true, locations: true } },
       tenants: true,
       durations: true,
       deposit: true,
       addOns: { include: { addOn: { include: { pricing: true } } } },
-      bills: { include: { bill_item: true } },
+      bills: { where: { deletedAt: null }, include: { bill_item: true } },
     },
   });
 

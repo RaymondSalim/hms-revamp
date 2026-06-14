@@ -17,7 +17,7 @@ export default async function UtilitiesPage() {
       },
     }),
     prisma.booking.findMany({
-      where: { status_id: 2 },
+      where: { status_id: 2, deletedAt: null },
       orderBy: { id: "desc" },
       include: { tenants: true, rooms: true },
     }),

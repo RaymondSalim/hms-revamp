@@ -38,7 +38,7 @@ export default async function GuestsPage() {
 
   // Get bookings for the location (for the guest form booking select)
   const bookings = await prisma.booking.findMany({
-    where: { rooms: { location_id: selectedLocationId } },
+    where: { rooms: { location_id: selectedLocationId }, deletedAt: null },
     include: { rooms: true, tenants: true },
     orderBy: { createdAt: "desc" },
   });

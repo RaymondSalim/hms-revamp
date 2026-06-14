@@ -20,7 +20,7 @@ export async function getAvailableCredit(bookingId: number): Promise<number> {
   if (!authorized) return 0;
 
   const payments = await prisma.payment.findMany({
-    where: { booking_id: bookingId },
+    where: { booking_id: bookingId, deletedAt: null },
     select: { id: true },
   });
   const paymentIds = new Set(payments.map((p) => p.id));
@@ -29,7 +29,7 @@ export async function getAvailableCredit(bookingId: number): Promise<number> {
   // tagged payment_id) net of refunds (negative, tagged booking_id +
   // credit_refund).
   const creditTransactions = await prisma.transaction.findMany({
-    where: { type: "CREDIT" },
+    where: { type: "CREDIT", deletedAt: null },
   });
   const net = creditTransactions.reduce((sum, t) => {
     const related = t.related_id as

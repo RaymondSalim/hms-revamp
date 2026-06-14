@@ -5,6 +5,7 @@ export async function getTransactionsByLocation(locationId: number, startDate?: 
   return prisma.transaction.findMany({
     where: {
       location_id: locationId,
+      deletedAt: null,
       ...(startDate && endDate && { date: { gte: startDate, lte: endDate } }),
     },
     orderBy: { date: "desc" },
@@ -26,6 +27,6 @@ export async function deleteTransactionsByPayment(paymentId: number) {
 
 export async function getTransactionsByDepositId(depositId: number) {
   return prisma.transaction.findMany({
-    where: { related_id: { path: ["deposit_id"], equals: depositId }, type: "INCOME" },
+    where: { related_id: { path: ["deposit_id"], equals: depositId }, type: "INCOME", deletedAt: null },
   });
 }

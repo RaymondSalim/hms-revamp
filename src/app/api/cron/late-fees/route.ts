@@ -30,7 +30,7 @@ export async function runLateFees(today?: Date) {
   const now = today ?? new Date();
 
   const bills = await prisma.bill.findMany({
-    where: { due_date: { lt: now } },
+    where: { due_date: { lt: now }, deletedAt: null, bookings: { deletedAt: null } },
     include: {
       bill_item: true,
       paymentBills: true,

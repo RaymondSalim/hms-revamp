@@ -25,6 +25,7 @@ export default async function PaymentsPage() {
       bookings: {
         rooms: { location_id: selectedLocationId },
       },
+      deletedAt: null,
     },
     include: {
       bookings: {
@@ -44,8 +45,8 @@ export default async function PaymentsPage() {
   });
 
   const bookings = await prisma.booking.findMany({
-    where: { rooms: { location_id: selectedLocationId } },
-    include: { tenants: true, rooms: true, bills: { include: { bill_item: true, paymentBills: true } } },
+    where: { rooms: { location_id: selectedLocationId }, deletedAt: null },
+    include: { tenants: true, rooms: true, bills: { where: { deletedAt: null }, include: { bill_item: true, paymentBills: true } } },
     orderBy: { start_date: "desc" },
   });
 

@@ -11,7 +11,7 @@ export async function getCalendarEventsAction(locationId: number) {
 
   // Generate booking events
   const bookings = await prisma.booking.findMany({
-    where: { rooms: { location_id: locationId } },
+    where: { rooms: { location_id: locationId }, deletedAt: null },
     include: { tenants: true, rooms: true },
   });
 

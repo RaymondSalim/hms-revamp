@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const whereClause: Record<string, unknown> = { location_id: locationId };
+  const whereClause: Record<string, unknown> = { location_id: locationId, deletedAt: null };
   if (startDate && endDate) {
     whereClause.date = { gte: new Date(startDate), lte: new Date(endDate) };
   }

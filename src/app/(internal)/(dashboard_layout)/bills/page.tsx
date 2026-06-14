@@ -25,6 +25,7 @@ export default async function BillsPage() {
       bookings: {
         rooms: { location_id: selectedLocationId },
       },
+      deletedAt: null,
     },
     include: {
       bill_item: true,

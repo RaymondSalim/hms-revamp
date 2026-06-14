@@ -35,7 +35,7 @@ export async function runInvoiceReminders(today?: Date) {
 
   // Fetch upcoming (not-yet-overdue) bills within the maximum plausible window.
   const bills = await prisma.bill.findMany({
-    where: { due_date: { gte: now, lte: maxWindow } },
+    where: { due_date: { gte: now, lte: maxWindow }, deletedAt: null, bookings: { deletedAt: null } },
     include: {
       bill_item: true,
       paymentBills: true,
