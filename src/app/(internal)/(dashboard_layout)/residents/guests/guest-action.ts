@@ -2,7 +2,7 @@
 
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
-import { lastDayOfMonth } from "date-fns";
+import { lastDayOfUtcMonth } from "@/app/_lib/util/business-time";
 import { guestSchema, guestStaySchema } from "@/app/_lib/zod/guest/zod";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 import { splitGuestStayByMonth } from "@/app/_lib/util/guest-billing";
@@ -92,7 +92,7 @@ export async function upsertGuestStayAction(data: { id?: number; guest_id: numbe
 
   for (const segment of segments) {
     // Find the matching bill for this month
-    const dueDate = lastDayOfMonth(new Date(segment.year, segment.month, 1));
+    const dueDate = lastDayOfUtcMonth(new Date(Date.UTC(segment.year, segment.month, 1)));
     let bill = await prisma.bill.findFirst({
       where: { booking_id: guest.booking_id, due_date: dueDate },
     });

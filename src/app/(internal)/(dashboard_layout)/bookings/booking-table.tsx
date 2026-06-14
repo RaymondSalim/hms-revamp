@@ -223,10 +223,13 @@ export function BookingTable({
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "-";
+    // start_date/end_date are @db.Date at midnight UTC; format in UTC so the
+    // displayed calendar day matches what was stored regardless of client TZ.
     return new Date(dateStr).toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone: "UTC",
     });
   };
 

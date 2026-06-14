@@ -116,7 +116,9 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
       header: "Diterapkan",
       cell: ({ row }) =>
         row.original.applied_at
-          ? new Date(row.original.applied_at).toLocaleDateString("id-ID")
+          ? new Date(row.original.applied_at).toLocaleDateString("id-ID", {
+              timeZone: "Asia/Jakarta",
+            })
           : "-",
     },
     {

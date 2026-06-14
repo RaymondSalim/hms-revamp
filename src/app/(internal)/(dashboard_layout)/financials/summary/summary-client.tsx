@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { businessToday } from "@/app/_lib/util/business-time";
 import {
   BarChart,
   Bar,
@@ -50,34 +51,38 @@ function formatCurrency(amount: number) {
 }
 
 function formatDate(dateStr: string) {
+  // Transaction.date is a @db.Date at midnight UTC; format in UTC so the calendar
+  // day matches what was stored regardless of client TZ.
   return new Date(dateStr).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
 function getDateRange(period: PeriodKey): { start: Date; end: Date } | null {
   if (period === "custom" || period === "all") return null;
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
+  // Transaction.date is a @db.Date at midnight UTC; bound the range in UTC
+  // business-calendar terms so it matches the stored dates regardless of client TZ.
+  const today = businessToday();
+  const end = new Date(today.getTime() + 86_400_000 - 1);
+  const start = new Date(today);
   switch (period) {
     case "7d":
-      start.setDate(start.getDate() - 7);
+      start.setUTCDate(start.getUTCDate() - 7);
       break;
     case "1m":
-      start.setMonth(start.getMonth() - 1);
+      start.setUTCMonth(start.getUTCMonth() - 1);
       break;
     case "3m":
-      start.setMonth(start.getMonth() - 3);
+      start.setUTCMonth(start.getUTCMonth() - 3);
       break;
     case "6m":
-      start.setMonth(start.getMonth() - 6);
+      start.setUTCMonth(start.getUTCMonth() - 6);
       break;
     case "1y":
-      start.setFullYear(start.getFullYear() - 1);
+      start.setUTCFullYear(start.getUTCFullYear() - 1);
       break;
   }
   return { start, end };
@@ -167,15 +172,17 @@ export function SummaryClient({ initialData, locationId }: SummaryClientProps) {
     const grouped: Record<string, { label: string; income: number; expense: number }> = {};
 
     for (const t of data.transactions) {
+      // t.date is a @db.Date at midnight UTC; group and label in UTC so chart
+      // buckets align with the stored calendar day regardless of client TZ.
       const d = new Date(t.date);
       const key =
         data.groupBy === "day"
           ? d.toISOString().slice(0, 10)
-          : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          : `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
       const label =
         data.groupBy === "day"
-          ? d.toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-          : d.toLocaleDateString("id-ID", { month: "short", year: "numeric" });
+          ? d.toLocaleDateString("id-ID", { day: "numeric", month: "short", timeZone: "UTC" })
+          : d.toLocaleDateString("id-ID", { month: "short", year: "numeric", timeZone: "UTC" });
 
       if (!grouped[key]) {
         grouped[key] = { label, income: 0, expense: 0 };

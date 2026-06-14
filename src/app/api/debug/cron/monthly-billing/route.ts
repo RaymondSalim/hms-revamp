@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
+import { businessToday } from "@/app/_lib/util/business-time";
 
 export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === "production") {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const targetDate = searchParams.get("target_date")
     ? new Date(searchParams.get("target_date")!)
-    : new Date();
+    : businessToday();
 
   // Same query as monthly billing
   const bookings = await prisma.booking.findMany({
@@ -32,10 +33,10 @@ export async function GET(request: NextRequest) {
   const results = bookings.map((booking) => {
     const existingBillMonths = booking.bills.map((b) => {
       const d = new Date(b.due_date);
-      return `${d.getFullYear()}-${d.getMonth()}`;
+      return `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
     });
 
-    const targetMonth = `${targetDate.getFullYear()}-${targetDate.getMonth()}`;
+    const targetMonth = `${targetDate.getUTCFullYear()}-${targetDate.getUTCMonth()}`;
     const alreadyExists = existingBillMonths.includes(targetMonth);
 
     return {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       tenant: booking.tenants?.name,
       fee: Number(booking.fee),
       wouldGenerate: !alreadyExists,
-      targetMonth: `${getIndonesianMonthName(targetDate.getMonth())} ${targetDate.getFullYear()}`,
+      targetMonth: `${getIndonesianMonthName(targetDate.getUTCMonth())} ${targetDate.getUTCFullYear()}`,
       existingBillCount: booking.bills.length,
     };
   });

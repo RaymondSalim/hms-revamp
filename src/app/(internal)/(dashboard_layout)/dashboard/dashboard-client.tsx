@@ -62,10 +62,13 @@ function formatCurrency(amount: number) {
 }
 
 function formatDate(dateStr: string) {
+  // All callers pass @db.Date fields (payment_date, due_date, event_date) stored
+  // at midnight UTC; format in UTC so the calendar day matches what was stored.
   return new Date(dateStr).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 

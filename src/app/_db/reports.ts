@@ -1,4 +1,4 @@
-import { differenceInCalendarDays } from "date-fns";
+import { businessToday, startOfUtcDay } from "@/app/_lib/util/business-time";
 import { prisma } from "@/app/_lib/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -60,7 +60,7 @@ export async function getAgingReport(
   locationId?: number | null,
   asOf?: Date
 ): Promise<AgingReport> {
-  const now = asOf ?? new Date();
+  const now = asOf ? startOfUtcDay(asOf) : businessToday();
 
   const bills = await prisma.bill.findMany({
     where: {
@@ -102,7 +102,11 @@ export async function getAgingReport(
 
     if (outstanding <= 0) continue;
 
-    const age = differenceInCalendarDays(now, bill.due_date);
+    // Both `now` and due_date are midnight UTC; a plain ms difference yields whole
+    // calendar days without local-timezone skew.
+    const age = Math.round(
+      (now.getTime() - startOfUtcDay(bill.due_date).getTime()) / 86_400_000
+    );
     const bucket = bucketForAge(age);
 
     const tenant = bill.bookings.tenants;

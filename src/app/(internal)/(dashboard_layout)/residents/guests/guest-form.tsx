@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { upsertGuestAction, upsertGuestStayAction } from "./guest-action";
 import { toast } from "react-toastify";
 import { formatCurrency } from "@/app/_lib/util/currency";
-import { lastDayOfMonth } from "date-fns";
+import { lastDayOfUtcMonth } from "@/app/_lib/util/business-time";
 import type { GuestRow, BookingOption } from "./guest-table";
 
 interface GuestFormProps {
@@ -35,19 +35,18 @@ function computeMonthlyBreakdown(startDate: string, endDate: string, dailyFee: n
   let current = new Date(start);
 
   while (current <= end) {
-    const monthEnd = lastDayOfMonth(current);
+    const monthEnd = lastDayOfUtcMonth(current);
     const segmentEnd = monthEnd < end ? monthEnd : end;
     const days = Math.round((segmentEnd.getTime() - current.getTime()) / 86400000) + 1;
     const amount = days * dailyFee;
 
     segments.push({
-      month: `${INDONESIAN_MONTHS[current.getMonth()]} ${current.getFullYear()}`,
+      month: `${INDONESIAN_MONTHS[current.getUTCMonth()]} ${current.getUTCFullYear()}`,
       days,
       amount,
     });
 
-    current = new Date(segmentEnd);
-    current.setDate(current.getDate() + 1);
+    current = new Date(segmentEnd.getTime() + 86400000);
   }
 
   return segments;
@@ -290,8 +289,8 @@ export function GuestForm({ guest, bookings, onSuccess }: GuestFormProps) {
                 >
                   <div className="flex items-center gap-3">
                     <span style={{ color: "var(--color-text-primary)" }}>
-                      {new Date(stay.start_date).toLocaleDateString("id-ID")} -{" "}
-                      {new Date(stay.end_date).toLocaleDateString("id-ID")}
+                      {new Date(stay.start_date).toLocaleDateString("id-ID", { timeZone: "UTC" })} -{" "}
+                      {new Date(stay.end_date).toLocaleDateString("id-ID", { timeZone: "UTC" })}
                     </span>
                     <span style={{ color: "var(--color-text-secondary)" }}>
                       {formatCurrency(stay.daily_fee)}/hari

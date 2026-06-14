@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { sendBillReminderEmail } from "@/app/_lib/mailer";
-import { addDays, startOfDay } from "date-fns";
+import { addDays } from "date-fns";
 import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
 import { resolveBillingPolicy } from "@/app/_lib/util/billing-policy";
+import { businessToday, startOfUtcDay } from "@/app/_lib/util/business-time";
 
 export const maxDuration = 60;
 
@@ -30,7 +31,7 @@ export async function runInvoiceReminders(today?: Date) {
     return { success: true, stats: { sent: 0, target: 0 } };
   }
 
-  const now = startOfDay(today ?? new Date());
+  const now = today ? startOfUtcDay(today) : businessToday();
   const maxWindow = addDays(now, MAX_WINDOW_DAYS);
 
   // Fetch upcoming (not-yet-overdue) bills within the maximum plausible window.

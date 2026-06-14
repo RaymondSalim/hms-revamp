@@ -1,4 +1,5 @@
-import { startOfDay, isBefore } from "date-fns";
+import { isBefore } from "date-fns";
+import { startOfUtcDay } from "@/app/_lib/util/business-time";
 
 /**
  * BookingStatus id reference:
@@ -24,8 +25,10 @@ export const BOOKING_STATUS = {
  *   - else start_date <= today -> ACTIVE (2)
  *   - else (future start)      -> PENDING (1)
  *
- * Dates are compared by calendar day (start-of-day), not time. start_date /
- * end_date are `@db.Date` columns and come back as midnight-UTC Date objects.
+ * Dates are compared by calendar day in UTC space, not time. start_date /
+ * end_date are `@db.Date` columns and come back as midnight-UTC Date objects;
+ * `today` should be a business calendar day (see businessToday). Comparing in
+ * UTC keeps the result independent of the server's local timezone.
  */
 export function computeExpectedStatus(
   booking: {
@@ -40,11 +43,11 @@ export function computeExpectedStatus(
     return booking.status_id;
   }
 
-  const todayStart = startOfDay(today);
-  const startStart = startOfDay(booking.start_date);
+  const todayStart = startOfUtcDay(today);
+  const startStart = startOfUtcDay(booking.start_date);
 
   if (booking.end_date) {
-    const endStart = startOfDay(booking.end_date);
+    const endStart = startOfUtcDay(booking.end_date);
     // Stay has fully ended (end day strictly before today).
     if (isBefore(endStart, todayStart)) {
       return BOOKING_STATUS.COMPLETED;

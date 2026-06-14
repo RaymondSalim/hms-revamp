@@ -3,8 +3,8 @@ import { splitGuestStayByMonth } from "@/app/_lib/util/guest-billing";
 
 describe("splitGuestStayByMonth", () => {
   it("stay within single month (Jan 5 to Jan 20, fee=50000): 16 days x 50000", () => {
-    const start = new Date(2025, 0, 5); // Jan 5
-    const end = new Date(2025, 0, 20); // Jan 20
+    const start = new Date(Date.UTC(2025, 0, 5)); // Jan 5
+    const end = new Date(Date.UTC(2025, 0, 20)); // Jan 20
     const segments = splitGuestStayByMonth(start, end, 50000);
 
     expect(segments).toHaveLength(1);
@@ -15,8 +15,8 @@ describe("splitGuestStayByMonth", () => {
   });
 
   it("stay spanning 2 months (Jan 15 to Feb 15, fee=100000): Jan=17 days, Feb=15 days", () => {
-    const start = new Date(2025, 0, 15); // Jan 15
-    const end = new Date(2025, 1, 15); // Feb 15
+    const start = new Date(Date.UTC(2025, 0, 15)); // Jan 15
+    const end = new Date(Date.UTC(2025, 1, 15)); // Feb 15
     const segments = splitGuestStayByMonth(start, end, 100000);
 
     expect(segments).toHaveLength(2);
@@ -35,8 +35,8 @@ describe("splitGuestStayByMonth", () => {
   });
 
   it("stay spanning 3 months (Jan 1 to Mar 31, fee=50000): Jan=31, Feb=28, Mar=31", () => {
-    const start = new Date(2025, 0, 1); // Jan 1
-    const end = new Date(2025, 2, 31); // Mar 31
+    const start = new Date(Date.UTC(2025, 0, 1)); // Jan 1
+    const end = new Date(Date.UTC(2025, 2, 31)); // Mar 31
     const segments = splitGuestStayByMonth(start, end, 50000);
 
     expect(segments).toHaveLength(3);
@@ -58,8 +58,8 @@ describe("splitGuestStayByMonth", () => {
   });
 
   it("single day stay: 1 day x fee", () => {
-    const start = new Date(2025, 3, 10); // Apr 10
-    const end = new Date(2025, 3, 10); // Apr 10
+    const start = new Date(Date.UTC(2025, 3, 10)); // Apr 10
+    const end = new Date(Date.UTC(2025, 3, 10)); // Apr 10
     const segments = splitGuestStayByMonth(start, end, 75000);
 
     expect(segments).toHaveLength(1);
@@ -70,8 +70,8 @@ describe("splitGuestStayByMonth", () => {
   });
 
   it("stay ending on last day of month", () => {
-    const start = new Date(2025, 0, 20); // Jan 20
-    const end = new Date(2025, 0, 31); // Jan 31
+    const start = new Date(Date.UTC(2025, 0, 20)); // Jan 20
+    const end = new Date(Date.UTC(2025, 0, 31)); // Jan 31
     const segments = splitGuestStayByMonth(start, end, 60000);
 
     expect(segments).toHaveLength(1);
@@ -82,8 +82,8 @@ describe("splitGuestStayByMonth", () => {
   });
 
   it("stay spanning year boundary (Dec 25 to Jan 5)", () => {
-    const start = new Date(2025, 11, 25); // Dec 25 2025
-    const end = new Date(2026, 0, 5); // Jan 5 2026
+    const start = new Date(Date.UTC(2025, 11, 25)); // Dec 25 2025
+    const end = new Date(Date.UTC(2026, 0, 5)); // Jan 5 2026
     const segments = splitGuestStayByMonth(start, end, 100000);
 
     expect(segments).toHaveLength(2);

@@ -1,5 +1,6 @@
 import { prisma } from "@/app/_lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { businessToday } from "@/app/_lib/util/business-time";
 
 type PrismaTxClient = Prisma.TransactionClient;
 
@@ -20,9 +21,9 @@ export async function generateInvoiceNumber(
   date?: Date,
   client: PrismaTxClient = prisma
 ): Promise<string> {
-  const d = date ?? new Date();
-  const year = d.getFullYear();
-  const month = d.getMonth() + 1;
+  const d = date ?? businessToday();
+  const year = d.getUTCFullYear();
+  const month = d.getUTCMonth() + 1;
 
   const location = await client.location.findUnique({
     where: { id: locationId },

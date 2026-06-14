@@ -71,10 +71,13 @@ function TypeBadge({ type }: { type: "GENERATED" | "CREATED" }) {
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return "-";
+  // due_date is a @db.Date stored at midnight UTC; format in UTC so the
+  // displayed calendar day matches what was stored regardless of client TZ.
   return new Date(dateStr).toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 

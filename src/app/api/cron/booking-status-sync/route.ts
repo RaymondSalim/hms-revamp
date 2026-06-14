@@ -6,6 +6,7 @@ import {
   computeExpectedStatus,
   BOOKING_STATUS,
 } from "@/app/_lib/util/booking-status";
+import { businessToday } from "@/app/_lib/util/business-time";
 
 export const maxDuration = 60;
 
@@ -22,7 +23,7 @@ export async function runBookingStatusSync() {
     return { success: true, stats: { updated: 0, scanned: 0 } };
   }
 
-  const today = new Date();
+  const today = businessToday();
 
   const bookings = await prisma.booking.findMany({
     where: { status_id: { not: BOOKING_STATUS.CANCELLED }, deletedAt: null },

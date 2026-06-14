@@ -1,10 +1,11 @@
 import { prisma } from "@/app/_lib/prisma";
+import { businessToday } from "@/app/_lib/util/business-time";
 
 export async function getCheckInOutCounts(locationId: number) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // event_date is a @db.Date at midnight UTC; compare against the business
+  // calendar day (also midnight UTC) so counts reflect the correct WIB day.
+  const today = businessToday();
+  const tomorrow = new Date(today.getTime() + 86_400_000);
 
   const checkIns = await prisma.checkInOutLog.count({
     where: {
@@ -48,7 +49,7 @@ export async function getRoomStats(locationId: number) {
 // excluded. start_date/end_date are @db.Date (midnight UTC), so direct Prisma
 // lte/gte comparisons are TZ-safe under TZ=UTC.
 export async function getOccupancyRate(locationId: number, asOf?: Date) {
-  const now = asOf ?? new Date();
+  const now = asOf ?? businessToday();
 
   const rooms = await prisma.room.findMany({
     where: { location_id: locationId },

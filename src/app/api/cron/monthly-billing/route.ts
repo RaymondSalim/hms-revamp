@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { generateNextMonthlyBill } from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
 import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
+import { businessToday } from "@/app/_lib/util/business-time";
 
 export const maxDuration = 60;
 
 async function runMonthlyBilling() {
-  const targetDate = new Date();
+  // "Today" in business (WIB) calendar terms, so month-boundary billing fires on
+  // the correct day even when the server clock is UTC.
+  const targetDate = businessToday();
 
   const bookings = await prisma.booking.findMany({
     where: {

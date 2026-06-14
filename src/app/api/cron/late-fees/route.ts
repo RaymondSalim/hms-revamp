@@ -7,6 +7,7 @@ import {
   resolveBillingPolicy,
   computeLateFee,
 } from "@/app/_lib/util/billing-policy";
+import { businessToday } from "@/app/_lib/util/business-time";
 
 export const maxDuration = 60;
 
@@ -27,7 +28,7 @@ export async function runLateFees(today?: Date) {
     return { success: true, stats: { created: 0 } };
   }
 
-  const now = today ?? new Date();
+  const now = today ?? businessToday();
 
   const bills = await prisma.bill.findMany({
     where: { due_date: { lt: now }, deletedAt: null, bookings: { deletedAt: null } },

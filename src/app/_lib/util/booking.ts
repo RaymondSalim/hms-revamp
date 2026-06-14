@@ -1,13 +1,20 @@
-import { addMonths, lastDayOfMonth } from "date-fns";
+import {
+  addUtcMonths,
+  lastDayOfUtcMonth,
+  startOfUtcDay,
+  businessToday,
+} from "@/app/_lib/util/business-time";
 
 // BL-001: getLastDateOfBooking
 // If start_date is 1st: end = last day of (start_month + month_count - 1)
 // If start_date is NOT 1st: end = last day of (start_month + month_count)
+// start_date is a @db.Date (midnight UTC); compute in UTC space so the result is
+// independent of the server's local timezone.
 export function getLastDateOfBooking(startDate: Date, monthCount: number): Date {
-  const isFirstOfMonth = startDate.getDate() === 1;
+  const isFirstOfMonth = startDate.getUTCDate() === 1;
   const monthsToAdd = isFirstOfMonth ? monthCount - 1 : monthCount;
-  const targetMonth = addMonths(startDate, monthsToAdd);
-  return lastDayOfMonth(targetMonth);
+  const targetMonth = addUtcMonths(startDate, monthsToAdd);
+  return lastDayOfUtcMonth(targetMonth);
 }
 
 // BL-002: isBookingActive
@@ -18,11 +25,8 @@ export function isBookingActive(booking: {
   end_date: Date | null;
   is_rolling: boolean;
 }): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const start = new Date(booking.start_date);
-  start.setHours(0, 0, 0, 0);
+  const today = businessToday();
+  const start = startOfUtcDay(booking.start_date);
 
   if (start > today) return false;
 
@@ -32,8 +36,7 @@ export function isBookingActive(booking: {
 
   if (!booking.end_date) return false;
 
-  const end = new Date(booking.end_date);
-  end.setHours(0, 0, 0, 0);
+  const end = startOfUtcDay(booking.end_date);
   return end >= today;
 }
 
@@ -42,12 +45,11 @@ export function getNextUpcomingBooking(bookings: Array<{
   end_date: Date | null;
   is_rolling: boolean;
 }>): typeof bookings[number] | null {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = businessToday();
 
   const upcoming = bookings
-    .filter((b) => new Date(b.start_date) > today)
-    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+    .filter((b) => startOfUtcDay(b.start_date) > today)
+    .sort((a, b) => startOfUtcDay(a.start_date).getTime() - startOfUtcDay(b.start_date).getTime());
 
   return upcoming[0] || null;
 }

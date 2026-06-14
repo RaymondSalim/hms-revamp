@@ -192,8 +192,8 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
               >
                 <div className="flex items-center gap-4 text-sm">
                   <span style={{ color: "var(--color-text-primary)" }}>
-                    {new Date(stay.start_date).toLocaleDateString("id-ID")} -{" "}
-                    {new Date(stay.end_date).toLocaleDateString("id-ID")}
+                    {new Date(stay.start_date).toLocaleDateString("id-ID", { timeZone: "UTC" })} -{" "}
+                    {new Date(stay.end_date).toLocaleDateString("id-ID", { timeZone: "UTC" })}
                   </span>
                   <span style={{ color: "var(--color-text-secondary)" }}>
                     {formatCurrency(stay.daily_fee)}/hari

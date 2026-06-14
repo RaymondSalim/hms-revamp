@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { getLastDateOfBooking } from "@/app/_lib/util/booking";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 import { bookingSchema } from "@/app/_lib/zod/booking/zod";
-import { getDaysInMonth, lastDayOfMonth, addMonths, startOfMonth } from "date-fns";
+import {
+  businessToday,
+  startOfUtcMonth,
+  lastDayOfUtcMonth,
+  daysInUtcMonth,
+  addUtcMonths,
+} from "@/app/_lib/util/business-time";
 import type { DepositStatus } from "@prisma/client";
 import { getAddonChargeForMonth } from "@/app/_lib/util/billing";
 import {
@@ -67,15 +73,15 @@ async function generateBillsForRange(
   const policy = await resolveBillingPolicy(booking.id, locationId);
   const shouldProrate = policy.proration_method !== "none";
 
-  let current = startOfMonth(startDate);
+  let current = startOfUtcMonth(startDate);
   let monthIndex = 0;
   const bills = [];
 
   while (current <= endDate) {
-    const daysInMonth = getDaysInMonth(current);
-    const billingMonth = current.getMonth();
-    const billingYear = current.getFullYear();
-    const dueDate = lastDayOfMonth(current);
+    const daysInMonth = daysInUtcMonth(current);
+    const billingMonth = current.getUTCMonth();
+    const billingYear = current.getUTCFullYear();
+    const dueDate = lastDayOfUtcMonth(current);
 
     // Calculate room fee (BL-012: due_date = last day of billing month).
     // Rent escalation steps up the base fee every N months of tenancy before
@@ -87,11 +93,11 @@ async function generateBillsForRange(
       policy.rate_escalation_frequency
     );
     let roomFee = escalatedFee;
-    if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
+    if (shouldProrate && monthIndex === 0 && startDate.getUTCDate() !== 1) {
       // Prorate first month: (daysInMonth - startDay + 1) / daysInMonth * fee
       roomFee = prorateFromStartDay(
         escalatedFee,
-        startDate.getDate(),
+        startDate.getUTCDate(),
         daysInMonth
       );
     }
@@ -142,10 +148,10 @@ async function generateBillsForRange(
         policy.rate_escalation_frequency
       );
       let srFee = escalatedSrFee;
-      if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
+      if (shouldProrate && monthIndex === 0 && startDate.getUTCDate() !== 1) {
         srFee = prorateFromStartDay(
           escalatedSrFee,
-          startDate.getDate(),
+          startDate.getUTCDate(),
           daysInMonth
         );
       }
@@ -168,13 +174,13 @@ async function generateBillsForRange(
         : null;
 
       // Skip if addon hasn't started yet or has ended
-      if (current < startOfMonth(addonStart)) continue;
+      if (current < startOfUtcMonth(addonStart)) continue;
       if (addonEnd && current > addonEnd) continue;
 
       // Calculate addon month index from addon start
       const addonMonthIndex =
-        (billingYear - addonStart.getFullYear()) * 12 +
-        (billingMonth - addonStart.getMonth());
+        (billingYear - addonStart.getUTCFullYear()) * 12 +
+        (billingMonth - addonStart.getUTCMonth());
       const charge = getAddonChargeForMonth(
         bookingAddon.addOn.pricing.map((p) => ({
           ...p,
@@ -185,10 +191,10 @@ async function generateBillsForRange(
       if (charge > 0) {
         // Prorate addon on first booking month if start day is not 1st
         let addonFee = charge;
-        if (shouldProrate && monthIndex === 0 && startDate.getDate() !== 1) {
+        if (shouldProrate && monthIndex === 0 && startDate.getUTCDate() !== 1) {
           addonFee = prorateFromStartDay(
             charge,
-            startDate.getDate(),
+            startDate.getUTCDate(),
             daysInMonth
           );
         }
@@ -218,8 +224,7 @@ async function generateBillsForRange(
     }
 
     bills.push(bill);
-    current = addMonths(current, 1);
-    current = startOfMonth(current);
+    current = startOfUtcMonth(addUtcMonths(current, 1));
     monthIndex++;
   }
 
@@ -239,8 +244,8 @@ export async function generateInitialBillsForRollingBooking(
   booking: BillGenerationBooking
 ) {
   // Generate bills up to end of current month
-  const today = new Date();
-  const endDate = lastDayOfMonth(today);
+  const today = businessToday();
+  const endDate = lastDayOfUtcMonth(today);
   return generateBillsForRange(booking, endDate);
 }
 
@@ -255,9 +260,9 @@ export async function generateNextMonthlyBill(
   // Only for rolling bookings without end_date
   if (!booking.is_rolling || booking.end_date) return null;
 
-  const targetMonth = targetDate.getMonth();
-  const targetYear = targetDate.getFullYear();
-  const dueDate = lastDayOfMonth(targetDate);
+  const targetMonth = targetDate.getUTCMonth();
+  const targetYear = targetDate.getUTCFullYear();
+  const dueDate = lastDayOfUtcMonth(targetDate);
 
   // Check if bill already exists for this month (IDEMPOTENT)
   const existingBill = await prisma.bill.findFirst({
@@ -326,12 +331,12 @@ export async function generateNextMonthlyBill(
     const addonEnd = bookingAddon.end_date
       ? new Date(bookingAddon.end_date)
       : null;
-    if (targetDate < startOfMonth(addonStart)) continue;
+    if (targetDate < startOfUtcMonth(addonStart)) continue;
     if (addonEnd && targetDate > addonEnd) continue;
 
     const addonMonthIndex =
-      (targetYear - addonStart.getFullYear()) * 12 +
-      (targetMonth - addonStart.getMonth());
+      (targetYear - addonStart.getUTCFullYear()) * 12 +
+      (targetMonth - addonStart.getUTCMonth());
     const charge = getAddonChargeForMonth(
       bookingAddon.addOn.pricing.map((p) => ({
         ...p,
@@ -599,7 +604,7 @@ export async function upsertBookingAction(data: {
             start_date: startDate,
             end_date: endDate,
           },
-          new Date()
+          businessToday()
         ) ?? data.status_id;
 
       const booking = await prisma.booking.create({
@@ -711,20 +716,20 @@ export async function scheduleEndOfStayAction(
     await prisma.bill.deleteMany({
       where: {
         booking_id: bookingId,
-        due_date: { gt: lastDayOfMonth(endDate) },
+        due_date: { gt: lastDayOfUtcMonth(endDate) },
       },
     });
 
     // 2b. Prorate the final month's bill if ending mid-month
-    const endDay = endDate.getDate();
-    const endMonth = endDate.getMonth();
-    const endYear = endDate.getFullYear();
-    const daysInEndMonth = new Date(endYear, endMonth + 1, 0).getDate();
+    const endDay = endDate.getUTCDate();
+    const endMonth = endDate.getUTCMonth();
+    const endYear = endDate.getUTCFullYear();
+    const daysInEndMonth = daysInUtcMonth(endDate);
     const isLastDayOfMonth = endDay === daysInEndMonth;
 
     if (!isLastDayOfMonth) {
       // Find the bill for the end month (due_date = last day of that month)
-      const lastDayDate = new Date(endYear, endMonth + 1, 0);
+      const lastDayDate = new Date(Date.UTC(endYear, endMonth + 1, 0));
       const finalBill = await prisma.bill.findFirst({
         where: {
           booking_id: bookingId,

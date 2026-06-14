@@ -3,7 +3,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { assertLocationAccess } from "@/app/_lib/util/location-scope";
 import ExcelJS from "exceljs";
-import { format } from "date-fns";
+import { formatUtcDateNumeric } from "@/app/_lib/util/business-time";
 
 function escapeHtml(value: string): string {
   return value
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     for (const txn of transactions) {
       sheet.addRow({
-        date: format(txn.date, "dd/MM/yyyy"),
+        date: formatUtcDateNumeric(txn.date),
         description: txn.description,
         category: txn.category || "-",
         type: txn.type,
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
     ${transactions
       .map(
         (t) =>
-          `<tr><td>${format(t.date, "dd/MM/yyyy")}</td><td>${escapeHtml(t.description)}</td><td>${escapeHtml(t.category || "-")}</td><td class="${escapeHtml(t.type.toLowerCase())}">${escapeHtml(t.type)}</td><td>Rp${Number(t.amount).toLocaleString("id-ID")}</td></tr>`
+          `<tr><td>${formatUtcDateNumeric(t.date)}</td><td>${escapeHtml(t.description)}</td><td>${escapeHtml(t.category || "-")}</td><td class="${escapeHtml(t.type.toLowerCase())}">${escapeHtml(t.type)}</td><td>Rp${Number(t.amount).toLocaleString("id-ID")}</td></tr>`
       )
       .join("")}
     <tr><td colspan="4"><strong>Total Pemasukan</strong></td><td><strong>Rp${totalIncome.toLocaleString("id-ID")}</strong></td></tr>

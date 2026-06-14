@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { addDays } from "date-fns";
+import { businessToday } from "@/app/_lib/util/business-time";
 
 export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === "production") {
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
   const { authorized } = await checkPermission("bills.view");
   if (!authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
-  const targetDate = new Date();
+  const targetDate = businessToday();
   const dueWindow = addDays(targetDate, 7);
 
   // Check feature flag

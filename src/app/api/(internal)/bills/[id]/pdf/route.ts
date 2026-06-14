@@ -3,7 +3,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { computeInvoiceTotals } from "@/app/_lib/util/invoice-totals";
 import PDFDocument from "pdfkit";
-import { format } from "date-fns";
+import { formatUtcDate } from "@/app/_lib/util/business-time";
 
 // pdfkit relies on Node APIs and reads bundled .afm font metrics at runtime.
 export const runtime = "nodejs";
@@ -85,7 +85,7 @@ export async function GET(
   doc.text(`Penyewa: ${tenant?.name ?? "-"}`);
   doc.text(`Kamar: ${room?.room_number ?? "-"}`);
   doc.text(`Deskripsi: ${bill.description}`);
-  doc.text(`Jatuh Tempo: ${format(bill.due_date, "dd MMM yyyy")}`);
+  doc.text(`Jatuh Tempo: ${formatUtcDate(bill.due_date)}`);
   doc.moveDown(0.8);
 
   // Divider
