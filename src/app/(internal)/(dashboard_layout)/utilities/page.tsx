@@ -2,6 +2,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { AccessDenied } from "@/app/_components/access-denied";
 import { UtilityTable, type MeterReadingRow, type BookingOption } from "./utility-table";
+import { BOOKING_STATUS } from "@/app/_lib/util/status";
 
 export default async function UtilitiesPage() {
   const { authorized } = await checkPermission("bills.manage");
@@ -17,7 +18,7 @@ export default async function UtilitiesPage() {
       },
     }),
     prisma.booking.findMany({
-      where: { status_id: 2, deletedAt: null },
+      where: { status_id: BOOKING_STATUS.ACTIVE, deletedAt: null },
       orderBy: { id: "desc" },
       include: { tenants: true, rooms: true },
     }),

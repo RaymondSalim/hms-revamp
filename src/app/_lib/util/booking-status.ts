@@ -1,16 +1,8 @@
 import { isBefore } from "date-fns";
 import { startOfUtcDay } from "@/app/_lib/util/business-time";
+import { BOOKING_STATUS } from "@/app/_lib/util/status";
 
-/**
- * BookingStatus id reference:
- *   1 = PENDING, 2 = ACTIVE, 3 = COMPLETED, 4 = CANCELLED
- */
-export const BOOKING_STATUS = {
-  PENDING: 1,
-  ACTIVE: 2,
-  COMPLETED: 3,
-  CANCELLED: 4,
-} as const;
+export { BOOKING_STATUS };
 
 /**
  * Compute the status_id a booking SHOULD have based on its dates.

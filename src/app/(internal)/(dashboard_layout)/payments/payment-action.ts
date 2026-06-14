@@ -4,6 +4,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { uploadToS3, deleteFromS3 } from "@/app/_lib/s3";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 import { roundMoney } from "@/app/_lib/util/money";
+import { PAYMENT_STATUS } from "@/app/_lib/util/status";
 import { paymentSchema } from "@/app/_lib/zod/payment/zod";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
@@ -47,9 +48,9 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
 
   if (!payment) return;
 
-  // Verification gate: only create transactions for verified payments
-  // status_id: 1=PENDING, 2=VERIFIED, 3=REJECTED; null=assumed verified (backwards compat)
-  if (payment.status_id === 1 || payment.status_id === 3) {
+  // Verification gate: only create transactions for verified payments.
+  // null status is assumed verified (backwards compat).
+  if (payment.status_id === PAYMENT_STATUS.PENDING || payment.status_id === PAYMENT_STATUS.REJECTED) {
     return;
   }
 

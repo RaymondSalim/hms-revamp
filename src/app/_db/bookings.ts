@@ -1,5 +1,6 @@
 import { prisma } from "@/app/_lib/prisma";
 import type { LocationScope } from "@/app/_lib/util/location-scope";
+import { BOOKING_STATUS } from "@/app/_lib/util/status";
 
 export async function getBookingsByLocation(locationId: number) {
   return prisma.booking.findMany({
@@ -38,7 +39,7 @@ export async function getBookingById(id: number, scope: LocationScope) {
 
 export async function getActiveRollingBookings() {
   return prisma.booking.findMany({
-    where: { is_rolling: true, end_date: null, status_id: 2, deletedAt: null },
+    where: { is_rolling: true, end_date: null, status_id: BOOKING_STATUS.ACTIVE, deletedAt: null },
     include: {
       rooms: { include: { roomtypes: true, locations: true } },
       tenants: true, deposit: true,

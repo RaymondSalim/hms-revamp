@@ -1,5 +1,6 @@
 import { prisma } from "@/app/_lib/prisma";
 import type { LocationScope } from "@/app/_lib/util/location-scope";
+import { ROOM_STATUS } from "@/app/_lib/util/status";
 
 export async function getRoomsByLocation(locationId: number) {
   return prisma.room.findMany({
@@ -33,7 +34,7 @@ export async function deleteRoom(id: number) {
 
 export async function getAvailableRoomsByLocation(locationId: number) {
   return prisma.room.findMany({
-    where: { location_id: locationId, status_id: 1 },
+    where: { location_id: locationId, status_id: ROOM_STATUS.AVAILABLE },
     include: { roomtypes: true },
     orderBy: { room_number: "asc" },
   });

@@ -1,5 +1,6 @@
 import { prisma } from "@/app/_lib/prisma";
 import { businessToday } from "@/app/_lib/util/business-time";
+import { BOOKING_STATUS } from "@/app/_lib/util/status";
 
 export async function getCheckInOutCounts(locationId: number) {
   // event_date is a @db.Date at midnight UTC; compare against the business
@@ -64,7 +65,7 @@ export async function getOccupancyRate(locationId: number, asOf?: Date) {
 
   const bookings = await prisma.booking.findMany({
     where: {
-      status_id: 2, // ACTIVE
+      status_id: BOOKING_STATUS.ACTIVE,
       start_date: { lte: now },
       OR: [{ end_date: null }, { end_date: { gte: now } }],
       rooms: { location_id: locationId },

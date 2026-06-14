@@ -1,6 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters", "omitApi"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -38,6 +37,10 @@ model Booking {
   billingPolicies BillingPolicy[]
   meterReadings   MeterReading[]
 
+  @@index([room_id])
+  @@index([status_id])
+  @@index([tenant_id])
+  @@index([duration_id])
   @@map("bookings")
 }
 
@@ -66,6 +69,8 @@ model CheckInOutLog {
   bookings Booking @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   tenant   Tenant?  @relation(fields: [tenant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
+  @@index([booking_id])
+  @@index([tenant_id])
   @@map("checkinoutlogs")
 }
 
@@ -98,6 +103,7 @@ model Transaction {
   related_id  Json?
   locations   Location        @relation(fields: [location_id], references: [id], onUpdate: NoAction)
 
+  @@index([location_id])
   @@map("transactions")
 }
 
@@ -113,6 +119,7 @@ model Guest {
   GuestStay  GuestStay[]
   booking    Booking     @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([booking_id])
   @@map("guests")
 }
 
@@ -127,6 +134,7 @@ model GuestStay {
   updatedAt DateTime @default(now()) @updatedAt
   guest     Guest    @relation(fields: [guest_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([guest_id])
   @@map("guest_stays")
 }
 
@@ -137,6 +145,7 @@ model Log {
   site_user_id String
   siteusers    SiteUser  @relation(fields: [site_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([site_user_id])
   @@map("logs")
 }
 
@@ -189,6 +198,7 @@ model MeterReading {
   updatedAt      DateTime @default(now()) @updatedAt
   booking        Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
 
+  @@index([booking_id])
   @@map("meter_readings")
 }
 
@@ -209,6 +219,8 @@ model Payment {
   bookings        Booking        @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   paymentstatuses PaymentStatus? @relation(fields: [status_id], references: [id], onUpdate: NoAction)
 
+  @@index([booking_id])
+  @@index([status_id])
   @@map("payments")
 }
 
@@ -220,6 +232,8 @@ model PaymentBill {
   bill       Bill    @relation(fields: [bill_id], references: [id], onDelete: Cascade)
   payment    Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
 
+  @@index([bill_id])
+  @@index([payment_id])
   @@map("payment_bills")
 }
 
@@ -267,6 +281,7 @@ model RolePermission {
   roles       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([role_id, permission_id])
+  @@index([permission_id])
   @@map("rolepermissions")
 }
 
@@ -298,6 +313,9 @@ model Room {
   roomstatuses RoomStatus? @relation(fields: [status_id], references: [id], onUpdate: NoAction)
 
   @@unique([room_number, location_id])
+  @@index([location_id])
+  @@index([room_type_id])
+  @@index([status_id])
   @@map("rooms")
 }
 
@@ -326,6 +344,8 @@ model RoomTypeDuration {
   roomtypes RoomType @relation(fields: [room_type_id], references: [id], onUpdate: NoAction)
 
   @@unique([room_type_id, duration_id, location_id])
+  @@index([duration_id])
+  @@index([location_id])
   @@map("roomtypedurations")
 }
 
@@ -381,6 +401,7 @@ model SiteUser {
   roles       Role?     @relation(fields: [role_id], references: [id], onUpdate: NoAction)
   userLocations UserLocation[]
 
+  @@index([role_id])
   @@map("siteusers")
 }
 
@@ -402,6 +423,7 @@ model Account {
   siteUser  SiteUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
+  @@index([userId])
   @@map("accounts")
 }
 
@@ -414,6 +436,7 @@ model Session {
   updatedAt DateTime @default(now()) @updatedAt
   siteUser  SiteUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("sessions")
 }
 
@@ -439,6 +462,7 @@ model Penalty {
   bookings  Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   bill      Bill?    @relation(fields: [bill_id], references: [id], onDelete: SetNull)
 
+  @@index([booking_id])
   @@map("penalties")
 }
 
@@ -494,6 +518,7 @@ model BillingPolicy {
   booking  Booking?  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
 
   @@unique([location_id, booking_id])
+  @@index([booking_id])
   @@map("billing_policies")
 }
 
@@ -590,6 +615,8 @@ model AddOn {
   bookings    BookingAddOn[]
 
   @@unique([name, location_id])
+  @@index([location_id])
+  @@index([parent_addon_id])
 }
 
 model AddOnPricing {
@@ -603,6 +630,8 @@ model AddOnPricing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   addOn     AddOn    @relation(fields: [addon_id], references: [id])
+
+  @@index([addon_id])
 }
 
 model BookingAddOn {
@@ -618,6 +647,9 @@ model BookingAddOn {
   updatedAt DateTime @updatedAt
   addOn     AddOn    @relation(fields: [addon_id], references: [id])
   booking   Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+
+  @@index([addon_id])
+  @@index([booking_id])
 }
 
 model Deposit {

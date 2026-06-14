@@ -3,6 +3,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 import { businessToday } from "@/app/_lib/util/business-time";
+import { BOOKING_STATUS } from "@/app/_lib/util/status";
 
 export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === "production") {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   // Same query as monthly billing
   const bookings = await prisma.booking.findMany({
-    where: { is_rolling: true, end_date: null, status_id: 2, deletedAt: null },
+    where: { is_rolling: true, end_date: null, status_id: BOOKING_STATUS.ACTIVE, deletedAt: null },
     include: {
       rooms: { include: { roomtypes: true, locations: true } },
       tenants: true,

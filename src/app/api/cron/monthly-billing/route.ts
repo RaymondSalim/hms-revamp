@@ -3,6 +3,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { generateNextMonthlyBill } from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
 import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
 import { businessToday } from "@/app/_lib/util/business-time";
+import { BOOKING_STATUS } from "@/app/_lib/util/status";
 
 export const maxDuration = 60;
 
@@ -15,7 +16,7 @@ async function runMonthlyBilling() {
     where: {
       is_rolling: true,
       end_date: null,
-      status_id: 2, // ACTIVE
+      status_id: BOOKING_STATUS.ACTIVE,
       deletedAt: null,
     },
     include: {

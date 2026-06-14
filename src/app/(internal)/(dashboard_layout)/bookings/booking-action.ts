@@ -25,6 +25,7 @@ import { logAudit } from "@/app/_lib/audit";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 import { computeExpectedStatus } from "@/app/_lib/util/booking-status";
+import { BOOKING_STATUS, ROOM_STATUS } from "@/app/_lib/util/status";
 import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
 import {
   prorateFromStartDay,
@@ -669,10 +670,10 @@ export async function upsertBookingAction(data: {
         }
       }
 
-      // Update room status to OCCUPIED (status_id 2)
+      // Update room status to OCCUPIED
       await prisma.room.update({
         where: { id: data.room_id },
-        data: { status_id: 2 },
+        data: { status_id: ROOM_STATUS.OCCUPIED },
       });
     }
 
@@ -850,7 +851,7 @@ export async function checkInOutAction(data: {
     if (data.event_type === "CHECK_OUT") {
       await prisma.booking.update({
         where: { id: data.booking_id },
-        data: { end_date: data.event_date, is_rolling: false, status_id: 3 },
+        data: { end_date: data.event_date, is_rolling: false, status_id: BOOKING_STATUS.COMPLETED },
       });
 
       // Handle deposit status transition with proper validation & transactions
@@ -1005,11 +1006,11 @@ export async function deleteBookingAction(id: number) {
       });
     });
 
-    // Reset room status to AVAILABLE (status_id 1)
+    // Reset room status to AVAILABLE
     if (roomId) {
       await prisma.room.update({
         where: { id: roomId },
-        data: { status_id: 1 },
+        data: { status_id: ROOM_STATUS.AVAILABLE },
       });
     }
 
