@@ -1,4 +1,5 @@
 import { prisma } from "@/app/_lib/prisma";
+import { roundMoney } from "@/app/_lib/util/money";
 
 // BL-014: Deterministic Regeneration of Payment-Bill Mappings.
 //
@@ -78,7 +79,7 @@ export async function generatePaymentBillMappingFromPaymentsAndBills(
 
       if (outstanding <= 0) continue;
 
-      const allocated = Math.min(remainingPayment, outstanding);
+      const allocated = roundMoney(Math.min(remainingPayment, outstanding));
       await prisma.paymentBill.create({
         data: {
           payment_id: payment.id,

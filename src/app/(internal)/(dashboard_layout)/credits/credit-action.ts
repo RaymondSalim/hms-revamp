@@ -3,6 +3,7 @@
 import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
+import { roundMoney } from "@/app/_lib/util/money";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -47,7 +48,7 @@ export async function getAvailableCredit(bookingId: number): Promise<number> {
     return sum;
   }, 0);
 
-  return net > 0 ? net : 0;
+  return net > 0 ? roundMoney(net) : 0;
 }
 
 /**

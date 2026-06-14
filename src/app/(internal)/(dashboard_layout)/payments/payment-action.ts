@@ -3,6 +3,7 @@
 import { prisma } from "@/app/_lib/prisma";
 import { uploadToS3, deleteFromS3 } from "@/app/_lib/s3";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
+import { roundMoney } from "@/app/_lib/util/money";
 import { paymentSchema } from "@/app/_lib/zod/payment/zod";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
@@ -102,6 +103,12 @@ export async function createOrUpdatePaymentTransactions(paymentId: number) {
       excessTotal += pbRemaining;
     }
   }
+
+  // Round each leg to whole rupiah so stored Transaction amounts stay exact and
+  // float drift from the Number()-based split above can't accumulate.
+  depositTotal = roundMoney(depositTotal);
+  regularTotal = roundMoney(regularTotal);
+  excessTotal = roundMoney(excessTotal);
 
   // Create "Deposit" INCOME transaction if depositTotal > 0
   if (depositTotal > 0 && depositId) {
@@ -241,10 +248,11 @@ export async function upsertPaymentAction(data: {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Validasi gagal" };
   }
 
-  // Manual mode: validate sum equals amount
+  // Manual mode: validate sum equals amount. IDR is whole-rupiah, so round both
+  // sides and compare exactly rather than using a float tolerance.
   if (data.allocation_mode === "manual" && data.manual_allocations) {
     const sum = data.manual_allocations.reduce((s, a) => s + a.amount, 0);
-    if (Math.abs(sum - data.amount) > 0.01) {
+    if (roundMoney(sum) !== roundMoney(data.amount)) {
       return {
         success: false,
         error: `Total alokasi manual (${sum}) tidak sama dengan jumlah pembayaran (${data.amount})`,
