@@ -4,8 +4,16 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { eventSchema } from "@/app/_lib/zod/event/zod";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds, isLocationInScope } from "@/app/_lib/util/location-scope";
 
 export async function getCalendarEventsAction(locationId: number) {
+  const { authorized } = await checkPermission("calendar.view");
+  if (!authorized) return [];
+
+  // Location scope guard: scoped users may only read events for their locations.
+  const scope = await getScopedLocationIds();
+  if (!isLocationInScope(scope, locationId)) return [];
+
   // Fetch custom events
   const events = await prisma.event.findMany();
 

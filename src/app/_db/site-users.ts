@@ -34,7 +34,18 @@ export async function setUserLocations(userId: string, locationIds: number[]) {
 }
 
 export async function getAllUsers() {
-  return prisma.siteUser.findMany({ include: { roles: true, userLocations: true }, orderBy: { name: "asc" } });
+  // Never select `password` — this result is serialized to the client UserTable.
+  return prisma.siteUser.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role_id: true,
+      roles: { select: { id: true, name: true } },
+      userLocations: { select: { user_id: true, location_id: true } },
+    },
+    orderBy: { name: "asc" },
+  });
 }
 
 export async function createUser(data: { name: string; email: string; password: string; role_id: number }) {

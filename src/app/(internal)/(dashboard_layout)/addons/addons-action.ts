@@ -4,6 +4,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { addonSchema } from "@/app/_lib/zod/addon/zod";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds, isLocationInScope } from "@/app/_lib/util/location-scope";
 
 export async function upsertAddonAction(data: {
   id?: string;
@@ -22,6 +23,22 @@ export async function upsertAddonAction(data: {
 }) {
   const { authorized } = await checkPermission("addons.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  const scope = await getScopedLocationIds();
+  if (!isLocationInScope(scope, data.location_id)) {
+    return { success: false, error: "Unauthorized" };
+  }
+  // When editing, also confirm the existing add-on is within scope so a scoped
+  // user can't reassign someone else's add-on into their own location.
+  if (data.id) {
+    const existing = await prisma.addOn.findUnique({
+      where: { id: data.id },
+      select: { location_id: true },
+    });
+    if (existing?.location_id != null && !isLocationInScope(scope, existing.location_id)) {
+      return { success: false, error: "Unauthorized" };
+    }
+  }
 
   const parsed = addonSchema.safeParse(data);
   if (!parsed.success) return { success: false, error: parsed.error.flatten() };
@@ -76,6 +93,16 @@ export async function deleteAddonAction(id: string) {
   const { authorized } = await checkPermission("addons.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
 
+  const existing = await prisma.addOn.findUnique({
+    where: { id },
+    select: { location_id: true },
+  });
+  if (!existing) return { success: false, error: "Add-on not found" };
+  const scope = await getScopedLocationIds();
+  if (existing.location_id != null && !isLocationInScope(scope, existing.location_id)) {
+    return { success: false, error: "Unauthorized" };
+  }
+
   try {
     await prisma.addOn.delete({ where: { id } });
     revalidatePath("/addons");
@@ -94,6 +121,18 @@ export async function scheduleEndOfAddonAction(
 ) {
   const { authorized } = await checkPermission("addons.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  const bookingAddon = await prisma.bookingAddOn.findUnique({
+    where: { id: bookingAddonId },
+    select: { booking: { select: { rooms: { select: { location_id: true } } } } },
+  });
+  if (!bookingAddon) return { success: false, error: "Add-on not found" };
+  const locationId = bookingAddon.booking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
   await prisma.bookingAddOn.update({
     where: { id: bookingAddonId },
     data: { end_date: new Date(endDate), is_rolling: false },

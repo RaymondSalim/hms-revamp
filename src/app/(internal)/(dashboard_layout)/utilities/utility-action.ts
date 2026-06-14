@@ -3,8 +3,20 @@
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { logAudit } from "@/app/_lib/audit";
 import { roundMoney } from "@/app/_lib/util/money";
+
+// Resolve a booking's location and confirm it is within the caller's scope.
+async function bookingInScope(bookingId: number): Promise<boolean> {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = booking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  return scope === null || (locationId != null && scope.includes(locationId));
+}
 
 function utilityLabel(utilityType: string): string {
   return utilityType === "electricity" ? "Listrik" : "Air";
@@ -20,6 +32,10 @@ export async function createMeterReadingAction(data: {
 }): Promise<{ success: boolean; error?: string; note?: string }> {
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
+
+  if (!(await bookingInScope(data.booking_id))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   const readingDate = new Date(data.reading_date);
 
@@ -92,6 +108,10 @@ export async function deleteMeterReadingAction(
 
   const reading = await prisma.meterReading.findUnique({ where: { id } });
   if (!reading) return { success: false, error: "Reading not found" };
+
+  if (!(await bookingInScope(reading.booking_id))) {
+    return { success: false, error: "Unauthorized" };
+  }
 
   // Remove any generated bill item tagged with this meter reading to avoid
   // orphan charges.

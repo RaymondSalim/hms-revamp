@@ -7,11 +7,37 @@ import { guestSchema, guestStaySchema } from "@/app/_lib/zod/guest/zod";
 import { getIndonesianMonthName } from "@/app/_lib/util/datetime";
 import { splitGuestStayByMonth } from "@/app/_lib/util/guest-billing";
 import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
+
+// Confirm a booking's location is within the caller's scope.
+async function bookingInScope(bookingId: number): Promise<boolean> {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = booking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  return scope === null || (locationId != null && scope.includes(locationId));
+}
+
+// Resolve the booking behind a guest, then check scope.
+async function guestInScope(guestId: number): Promise<boolean> {
+  const guest = await prisma.guest.findUnique({
+    where: { id: guestId },
+    select: { booking_id: true },
+  });
+  if (!guest) return false;
+  return bookingInScope(guest.booking_id);
+}
 
 export async function upsertGuestAction(data: { id?: number; name: string; email?: string; phone?: string; booking_id: number }) {
   const { authorized } = await checkPermission("guests.manage");
   if (!authorized) return { success: false as const, error: "Unauthorized" };
+
+  if (!(await bookingInScope(data.booking_id))) {
+    return { success: false as const, error: "Unauthorized" };
+  }
 
   const parsed = guestSchema.safeParse(data);
   if (!parsed.success) return { success: false as const, error: parsed.error.flatten() };
@@ -29,6 +55,10 @@ export async function upsertGuestAction(data: { id?: number; name: string; email
 export async function upsertGuestStayAction(data: { id?: number; guest_id: number; start_date: Date; end_date: Date; daily_fee: number }) {
   const { authorized } = await checkPermission("guests.manage");
   if (!authorized) return { success: false as const, error: "Unauthorized" };
+
+  if (!(await guestInScope(data.guest_id))) {
+    return { success: false as const, error: "Unauthorized" };
+  }
 
   const parsed = guestStaySchema.safeParse(data);
   if (!parsed.success) return { success: false as const, error: parsed.error.flatten() };
@@ -97,6 +127,10 @@ export async function deleteGuestAction(guestId: number) {
   const { authorized } = await checkPermission("guests.manage");
   if (!authorized) return { success: false as const, error: "Unauthorized" };
 
+  if (!(await guestInScope(guestId))) {
+    return { success: false as const, error: "Unauthorized" };
+  }
+
   await prisma.guest.delete({ where: { id: guestId } });
   revalidatePath("/residents/guests");
   return { success: true as const };
@@ -105,6 +139,15 @@ export async function deleteGuestAction(guestId: number) {
 export async function deleteGuestStayAction(stayId: number) {
   const { authorized } = await checkPermission("guests.manage");
   if (!authorized) return { success: false as const, error: "Unauthorized" };
+
+  const stay = await prisma.guestStay.findUnique({
+    where: { id: stayId },
+    select: { guest_id: true },
+  });
+  if (!stay || !(await guestInScope(stay.guest_id))) {
+    return { success: false as const, error: "Unauthorized" };
+  }
+
   // Delete associated bill items first
   await prisma.billItem.deleteMany({
     where: { related_id: { path: ["guest_stay_id"], equals: stayId } },
