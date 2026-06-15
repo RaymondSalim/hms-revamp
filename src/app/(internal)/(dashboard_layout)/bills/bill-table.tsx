@@ -85,8 +85,7 @@ function formatDate(dateStr: string | null) {
 
 export function BillTable({ bills }: Props) {
   const [expandedBillId, setExpandedBillId] = useState<number | null>(null);
-  const [dueDateModal, setDueDateModal] = useState<BillRow | null>(null);
-  const [addItemModal, setAddItemModal] = useState<BillRow | null>(null);
+  const [editBillModal, setEditBillModal] = useState<BillRow | null>(null);
   const [editItemModal, setEditItemModal] = useState<BillItemRow | null>(null);
   const [deleteItemConfirm, setDeleteItemConfirm] =
     useState<BillItemRow | null>(null);
@@ -108,26 +107,24 @@ export function BillTable({ bills }: Props) {
   >([{ description: "", amount: "", internal_description: "" }]);
 
   const handleUpdateDueDate = async () => {
-    if (!dueDateModal || !dueDateValue) return;
+    if (!editBillModal || !dueDateValue) return;
     setLoading(true);
     const result = await updateBillDueDateAction(
-      dueDateModal.id,
+      editBillModal.id,
       new Date(dueDateValue)
     );
     setLoading(false);
     if (result.success) {
       toast.success("Tanggal jatuh tempo berhasil diperbarui");
-      setDueDateModal(null);
-      setDueDateValue("");
     } else {
       toast.error(result.error ?? "Gagal memperbarui tanggal");
     }
   };
 
   const handleAddItem = async () => {
-    if (!addItemModal || !itemDesc || !itemAmount) return;
+    if (!editBillModal || !itemDesc || !itemAmount) return;
     setLoading(true);
-    const result = await addBillItemAction(addItemModal.id, {
+    const result = await addBillItemAction(editBillModal.id, {
       description: itemDesc,
       amount: parseFloat(itemAmount),
       internal_description: itemInternal || undefined,
@@ -135,7 +132,6 @@ export function BillTable({ bills }: Props) {
     setLoading(false);
     if (result.success) {
       toast.success("Item tagihan berhasil ditambahkan");
-      setAddItemModal(null);
       resetItemForm();
     } else {
       toast.error(result.error ?? "Gagal menambahkan item");
@@ -348,16 +344,9 @@ export function BillTable({ bills }: Props) {
                 window.open(`/api/bills/${row.original.id}/pdf`, "_blank"),
             },
             {
-              label: "Ubah Tanggal",
-              icon: Icons.calendar,
-              onClick: () => { setDueDateModal(row.original); setDueDateValue(row.original.due_date.split("T")[0]); },
-              variant: "warning",
-            },
-            {
-              label: "Tambah Item",
-              icon: Icons.addItem,
-              onClick: () => { setAddItemModal(row.original); resetItemForm(); },
-              variant: "success",
+              label: "Edit",
+              icon: Icons.edit,
+              onClick: () => { setEditBillModal(row.original); setDueDateValue(row.original.due_date.split("T")[0]); resetItemForm(); },
             },
           ]}
           maxInline={2}
@@ -465,18 +454,18 @@ export function BillTable({ bills }: Props) {
                       {item.internal_description ?? "-"}
                     </td>
                     <td className="px-3 py-2">
-                      {item.type === "CREATED" && (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => openEditItem(item)}
-                            className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
-                            style={{
-                              backgroundColor: "var(--color-accent-light)",
-                              color: "var(--color-accent)",
-                            }}
-                          >
-                            Edit
-                          </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => openEditItem(item)}
+                          className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                          style={{
+                            backgroundColor: "var(--color-accent-light)",
+                            color: "var(--color-accent)",
+                          }}
+                        >
+                          Edit
+                        </button>
+                        {item.type === "CREATED" && (
                           <button
                             onClick={() => setDeleteItemConfirm(item)}
                             className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
@@ -487,8 +476,8 @@ export function BillTable({ bills }: Props) {
                           >
                             Hapus
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -563,160 +552,174 @@ export function BillTable({ bills }: Props) {
         )}
       </Modal>
 
-      {/* Update Due Date Modal */}
+      {/* Edit Bill Modal (due date + items) */}
       <Modal
-        isOpen={!!dueDateModal}
+        isOpen={!!editBillModal}
         onClose={() => {
-          setDueDateModal(null);
+          setEditBillModal(null);
           setDueDateValue("");
-        }}
-        title="Ubah Tanggal Jatuh Tempo"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <p
-            className="text-sm"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            Ubah tanggal jatuh tempo untuk tagihan{" "}
-            <strong>{dueDateModal?.description}</strong>.
-          </p>
-          <div>
-            <label
-              className="block text-sm font-medium mb-1"
-              style={{ color: "var(--color-text-primary)" }}
-            >
-              Tanggal Jatuh Tempo
-            </label>
-            <input
-              type="date"
-              value={dueDateValue}
-              onChange={(e) => setDueDateValue(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
-              style={{
-                borderColor: "var(--color-border)",
-                backgroundColor: "var(--color-bg-card)",
-              }}
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setDueDateModal(null);
-                setDueDateValue("");
-              }}
-              className="px-4 py-2.5 text-sm font-medium rounded-lg border"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleUpdateDueDate}
-              disabled={loading || !dueDateValue}
-              className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50"
-              style={{ backgroundColor: "var(--color-accent)" }}
-            >
-              {loading ? "Menyimpan..." : "Simpan"}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Add Item Modal */}
-      <Modal
-        isOpen={!!addItemModal}
-        onClose={() => {
-          setAddItemModal(null);
           resetItemForm();
         }}
-        title="Tambah Item Tagihan"
-        size="sm"
+        title={`Edit Tagihan - ${editBillModal?.description ?? ""}`}
+        size="lg"
       >
-        <div className="space-y-4">
-          <div>
-            <label
-              className="block text-sm font-medium mb-1"
-              style={{ color: "var(--color-text-primary)" }}
+        {editBillModal && (
+          <div className="space-y-6">
+            {/* Due Date Section */}
+            <div>
+              <label
+                className="block text-sm font-semibold mb-2"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                Tanggal Jatuh Tempo
+              </label>
+              <div className="flex gap-2 items-end">
+                <input
+                  type="date"
+                  value={dueDateValue}
+                  onChange={(e) => setDueDateValue(e.target.value)}
+                  className="flex-1 px-3 py-2.5 text-sm rounded-lg border outline-none"
+                  style={{
+                    borderColor: "var(--color-border)",
+                    backgroundColor: "var(--color-bg-card)",
+                  }}
+                />
+                <button
+                  onClick={handleUpdateDueDate}
+                  disabled={loading || !dueDateValue || dueDateValue === editBillModal.due_date.split("T")[0]}
+                  className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+                  style={{ backgroundColor: "var(--color-accent)" }}
+                >
+                  {loading ? "..." : "Simpan"}
+                </button>
+              </div>
+            </div>
+
+            {/* Existing Items Section */}
+            <div>
+              <label
+                className="block text-sm font-semibold mb-2"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                Item Tagihan ({editBillModal.bill_item.length})
+              </label>
+              <div className="overflow-x-auto rounded-lg border" style={{ borderColor: "var(--color-border)" }}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: "var(--color-bg-primary)" }}>
+                      <th className="px-3 py-2 text-left font-medium text-xs" style={{ color: "var(--color-text-secondary)" }}>Deskripsi</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs" style={{ color: "var(--color-text-secondary)" }}>Jumlah</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs" style={{ color: "var(--color-text-secondary)" }}>Tipe</th>
+                      <th className="px-3 py-2 text-left font-medium text-xs" style={{ color: "var(--color-text-secondary)" }}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editBillModal.bill_item.map((item) => (
+                      <tr key={item.id} className="border-t" style={{ borderColor: "var(--color-border)" }}>
+                        <td className="px-3 py-2">{item.description}</td>
+                        <td className="px-3 py-2">{formatCurrency(item.amount)}</td>
+                        <td className="px-3 py-2"><TypeBadge type={item.type} /></td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => openEditItem(item)}
+                              className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                              style={{ backgroundColor: "var(--color-accent-light)", color: "var(--color-accent)" }}
+                            >
+                              Edit
+                            </button>
+                            {item.type === "CREATED" && (
+                              <button
+                                onClick={() => setDeleteItemConfirm(item)}
+                                className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                                style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {editBillModal.bill_item.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-4 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                          Tidak ada item
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Add New Item Section */}
+            <div
+              className="border rounded-lg p-4"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-primary)" }}
             >
-              Deskripsi
-            </label>
-            <input
-              type="text"
-              value={itemDesc}
-              onChange={(e) => setItemDesc(e.target.value)}
-              placeholder="Contoh: Denda keterlambatan"
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
-              style={{
-                borderColor: "var(--color-border)",
-                backgroundColor: "var(--color-bg-card)",
-              }}
-            />
+              <label
+                className="block text-sm font-semibold mb-3"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                Tambah Item Baru
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <input
+                    type="text"
+                    value={itemDesc}
+                    onChange={(e) => setItemDesc(e.target.value)}
+                    placeholder="Deskripsi"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-card)" }}
+                  />
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    value={itemAmount}
+                    onChange={(e) => setItemAmount(e.target.value)}
+                    placeholder="Jumlah (Rp)"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-card)" }}
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={itemInternal}
+                    onChange={(e) => setItemInternal(e.target.value)}
+                    placeholder="Catatan internal (opsional)"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-card)" }}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={handleAddItem}
+                  disabled={loading || !itemDesc || !itemAmount}
+                  className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+                  style={{ backgroundColor: "var(--color-accent)" }}
+                >
+                  {loading ? "Menyimpan..." : "+ Tambah Item"}
+                </button>
+              </div>
+            </div>
+
+            {/* Close button */}
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => { setEditBillModal(null); setDueDateValue(""); resetItemForm(); }}
+                className="px-4 py-2.5 text-sm font-medium rounded-lg border"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text-primary)" }}
+              >
+                Tutup
+              </button>
+            </div>
           </div>
-          <div>
-            <label
-              className="block text-sm font-medium mb-1"
-              style={{ color: "var(--color-text-primary)" }}
-            >
-              Jumlah (Rp)
-            </label>
-            <input
-              type="number"
-              value={itemAmount}
-              onChange={(e) => setItemAmount(e.target.value)}
-              placeholder="500000"
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
-              style={{
-                borderColor: "var(--color-border)",
-                backgroundColor: "var(--color-bg-card)",
-              }}
-            />
-          </div>
-          <div>
-            <label
-              className="block text-sm font-medium mb-1"
-              style={{ color: "var(--color-text-primary)" }}
-            >
-              Catatan Internal (opsional)
-            </label>
-            <input
-              type="text"
-              value={itemInternal}
-              onChange={(e) => setItemInternal(e.target.value)}
-              placeholder="Catatan untuk internal"
-              className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
-              style={{
-                borderColor: "var(--color-border)",
-                backgroundColor: "var(--color-bg-card)",
-              }}
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setAddItemModal(null);
-                resetItemForm();
-              }}
-              className="px-4 py-2.5 text-sm font-medium rounded-lg border"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleAddItem}
-              disabled={loading || !itemDesc || !itemAmount}
-              className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50"
-              style={{ backgroundColor: "var(--color-accent)" }}
-            >
-              {loading ? "Menyimpan..." : "Tambah"}
-            </button>
-          </div>
-        </div>
+        )}
       </Modal>
 
       {/* Edit Item Modal */}
