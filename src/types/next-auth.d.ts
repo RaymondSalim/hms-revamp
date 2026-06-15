@@ -15,6 +15,7 @@ declare module "next-auth" {
     role_id: number | null;
     shouldReset: boolean;
     location_ids: number[];
+    rememberMe?: boolean;
   }
 }
 
@@ -24,5 +25,8 @@ declare module "next-auth/jwt" {
     role_id: number;
     shouldReset: boolean;
     location_ids: number[];
+    rememberMe?: boolean;
+    issuedAt?: number;
+    expiresAt?: number;
   }
 }

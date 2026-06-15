@@ -670,11 +670,13 @@ export async function upsertBookingAction(data: {
         }
       }
 
-      // Update room status to OCCUPIED
-      await prisma.room.update({
-        where: { id: data.room_id },
-        data: { status_id: ROOM_STATUS.OCCUPIED },
-      });
+      // Only mark room OCCUPIED if booking is active now (not future/pending)
+      if (derivedStatus === BOOKING_STATUS.ACTIVE) {
+        await prisma.room.update({
+          where: { id: data.room_id },
+          data: { status_id: ROOM_STATUS.OCCUPIED },
+        });
+      }
     }
 
     revalidatePath("/bookings");

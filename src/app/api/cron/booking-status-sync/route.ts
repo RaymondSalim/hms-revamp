@@ -6,6 +6,7 @@ import {
   computeExpectedStatus,
   BOOKING_STATUS,
 } from "@/app/_lib/util/booking-status";
+import { ROOM_STATUS } from "@/app/_lib/util/status";
 import { businessToday } from "@/app/_lib/util/business-time";
 
 export const maxDuration = 60;
@@ -45,6 +46,22 @@ export async function runBookingStatusSync() {
         where: { id: booking.id },
         data: { status_id: expected },
       });
+
+      // Sync room status when booking transitions
+      if (booking.room_id) {
+        if (expected === BOOKING_STATUS.ACTIVE) {
+          await prisma.room.update({
+            where: { id: booking.room_id },
+            data: { status_id: ROOM_STATUS.OCCUPIED },
+          });
+        } else if (expected === BOOKING_STATUS.COMPLETED) {
+          await prisma.room.update({
+            where: { id: booking.room_id },
+            data: { status_id: ROOM_STATUS.AVAILABLE },
+          });
+        }
+      }
+
       await logAudit(
         `booking.status_synced: id=${booking.id}, ${booking.status_id}->${expected}`
       );

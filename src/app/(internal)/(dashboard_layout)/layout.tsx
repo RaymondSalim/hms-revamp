@@ -8,6 +8,7 @@ import { getUserPermissions } from "@/app/_lib/rbac";
 import { LocationProvider } from "@/app/_context/location-context";
 import { Sidebar } from "@/app/_components/sidebar";
 import { Header } from "@/app/_components/header";
+import { SessionRefresh } from "@/app/_components/session-refresh";
 
 export default async function DashboardLayout({
   children,
@@ -36,6 +37,7 @@ export default async function DashboardLayout({
 
   return (
     <LocationProvider initialLocations={locations} initialLocationId={initialLocationId}>
+      <SessionRefresh />
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           userName={session?.user?.name ?? "Pengguna"}

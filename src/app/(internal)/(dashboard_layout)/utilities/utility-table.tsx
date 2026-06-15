@@ -53,10 +53,41 @@ function bookingLabel(b: BookingOption): string {
   return parts.length ? parts.join(" - ") : `Booking #${b.id}`;
 }
 
+type SortKey = "reading_date" | "tenant_name" | "utility_type";
+type SortDir = "asc" | "desc";
+
 export function UtilityTable({ readings, bookings }: Props) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [sortKey, setSortKey] = useState<SortKey>("reading_date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  function sortIndicator(key: SortKey): string {
+    if (sortKey !== key) return "";
+    return sortDir === "asc" ? "↑" : "↓";
+  }
+
+  const sortedReadings = [...readings].sort((a, b) => {
+    let cmp = 0;
+    if (sortKey === "reading_date") {
+      cmp = a.reading_date.localeCompare(b.reading_date);
+    } else if (sortKey === "tenant_name") {
+      cmp = (a.tenant_name ?? "").localeCompare(b.tenant_name ?? "");
+    } else if (sortKey === "utility_type") {
+      cmp = a.utility_type.localeCompare(b.utility_type);
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
 
   const [bookingId, setBookingId] = useState<string>(
     bookings[0] ? String(bookings[0].id) : ""
@@ -142,19 +173,29 @@ export function UtilityTable({ readings, bookings }: Props) {
       <div
         className="rounded-lg border overflow-x-auto"
         style={{
-          backgroundColor: "var(--color-bg-secondary)",
+          backgroundColor: "var(--color-bg-card)",
           borderColor: "var(--color-border)",
         }}
       >
         <table className="w-full text-sm">
           <thead>
             <tr
-              className="text-left"
-              style={{ color: "var(--color-text-secondary)" }}
+              className="text-left border-b"
+              style={{
+                color: "var(--color-text-secondary)",
+                backgroundColor: "var(--color-bg-card)",
+                borderColor: "var(--color-border)",
+              }}
             >
-              <th className="px-4 py-3 font-medium">Tanggal</th>
-              <th className="px-4 py-3 font-medium">Penyewa / Kamar</th>
-              <th className="px-4 py-3 font-medium">Jenis</th>
+              <th className="px-4 py-3 font-medium cursor-pointer select-none" onClick={() => handleSort("reading_date")}>
+                Tanggal {sortIndicator("reading_date")}
+              </th>
+              <th className="px-4 py-3 font-medium cursor-pointer select-none" onClick={() => handleSort("tenant_name")}>
+                Penyewa / Kamar {sortIndicator("tenant_name")}
+              </th>
+              <th className="px-4 py-3 font-medium cursor-pointer select-none" onClick={() => handleSort("utility_type")}>
+                Jenis {sortIndicator("utility_type")}
+              </th>
               <th className="px-4 py-3 font-medium text-right">Sebelumnya</th>
               <th className="px-4 py-3 font-medium text-right">Sekarang</th>
               <th className="px-4 py-3 font-medium text-right">Pemakaian</th>
@@ -164,7 +205,7 @@ export function UtilityTable({ readings, bookings }: Props) {
             </tr>
           </thead>
           <tbody>
-            {readings.length === 0 && (
+            {sortedReadings.length === 0 && (
               <tr>
                 <td
                   colSpan={9}
@@ -175,7 +216,7 @@ export function UtilityTable({ readings, bookings }: Props) {
                 </td>
               </tr>
             )}
-            {readings.map((r) => {
+            {sortedReadings.map((r) => {
               const consumption =
                 r.previous_value === null
                   ? null

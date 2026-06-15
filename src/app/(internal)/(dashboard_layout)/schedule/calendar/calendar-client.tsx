@@ -7,6 +7,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, { type DateClickArg } from "@fullcalendar/interaction";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import { upsertEventAction, deleteEventAction } from "./calendar-action";
+import { Modal } from "@/app/_components/modal";
 
 interface CalendarEvent {
   id: string;
@@ -267,249 +268,230 @@ export function CalendarClient({ events }: CalendarClientProps) {
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="w-full max-w-md rounded-xl p-6 shadow-xl"
-            style={{ backgroundColor: "var(--color-bg-secondary)" }}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2
-                className="text-lg font-semibold"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {isEditing ? "Edit Acara" : "Tambah Acara"}
-              </h2>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={isEditing ? "Edit Acara" : "Tambah Acara"}
+      >
+        {errorMessage && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Title */}
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Judul *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-bg-primary)",
+                color: "var(--color-text-primary)",
+              }}
+              placeholder="Nama acara"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Deskripsi
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-bg-primary)",
+                color: "var(--color-text-primary)",
+              }}
+              rows={3}
+              placeholder="Deskripsi acara (opsional)"
+            />
+          </div>
+
+          {/* Start */}
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Mulai *
+            </label>
+            <input
+              type={formData.allDay ? "date" : "datetime-local"}
+              required
+              value={formData.start}
+              onChange={(e) =>
+                setFormData({ ...formData, start: e.target.value })
+              }
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-bg-primary)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+          </div>
+
+          {/* End */}
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Selesai
+            </label>
+            <input
+              type={formData.allDay ? "date" : "datetime-local"}
+              value={formData.end}
+              onChange={(e) =>
+                setFormData({ ...formData, end: e.target.value })
+              }
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-bg-primary)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+          </div>
+
+          {/* All Day Toggle */}
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="allDay"
+              checked={formData.allDay}
+              onChange={(e) =>
+                setFormData({ ...formData, allDay: e.target.checked })
+              }
+              className="h-4 w-4 rounded"
+            />
+            <label
+              htmlFor="allDay"
+              className="text-sm"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Sepanjang Hari
+            </label>
+          </div>
+
+          {/* Recurring Toggle */}
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="recurring"
+              checked={formData.recurring}
+              onChange={(e) =>
+                setFormData({ ...formData, recurring: e.target.checked })
+              }
+              className="h-4 w-4 rounded"
+            />
+            <label
+              htmlFor="recurring"
+              className="text-sm"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Berulang
+            </label>
+          </div>
+
+          {/* Color Picker */}
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Warna
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_OPTIONS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      backgroundColor: color.value,
+                    })
+                  }
+                  className="h-8 w-8 rounded-full border-2 transition-transform hover:scale-110"
+                  style={{
+                    backgroundColor: color.value,
+                    borderColor:
+                      formData.backgroundColor === color.value
+                        ? "var(--color-text-primary)"
+                        : "transparent",
+                  }}
+                  title={color.label}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-2">
+            {isEditing && (
               <button
-                onClick={() => setShowModal(false)}
-                className="text-xl leading-none"
-                style={{ color: "var(--color-text-secondary)" }}
+                type="button"
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: "#DC2626" }}
               >
-                &times;
+                Hapus
+              </button>
+            )}
+            <div
+              className={`flex gap-2 ${!isEditing ? "ml-auto" : ""}`}
+            >
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
+                style={{
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text-primary)",
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-terracotta)" }}
+              >
+                {isSubmitting
+                  ? "Menyimpan..."
+                  : isEditing
+                    ? "Perbarui"
+                    : "Simpan"}
               </button>
             </div>
-
-            {errorMessage && (
-              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-                {errorMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Title */}
-              <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  Judul *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    backgroundColor: "var(--color-bg-primary)",
-                    color: "var(--color-text-primary)",
-                  }}
-                  placeholder="Nama acara"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  Deskripsi
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    backgroundColor: "var(--color-bg-primary)",
-                    color: "var(--color-text-primary)",
-                  }}
-                  rows={3}
-                  placeholder="Deskripsi acara (opsional)"
-                />
-              </div>
-
-              {/* Start */}
-              <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  Mulai *
-                </label>
-                <input
-                  type={formData.allDay ? "date" : "datetime-local"}
-                  required
-                  value={formData.start}
-                  onChange={(e) =>
-                    setFormData({ ...formData, start: e.target.value })
-                  }
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    backgroundColor: "var(--color-bg-primary)",
-                    color: "var(--color-text-primary)",
-                  }}
-                />
-              </div>
-
-              {/* End */}
-              <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  Selesai
-                </label>
-                <input
-                  type={formData.allDay ? "date" : "datetime-local"}
-                  value={formData.end}
-                  onChange={(e) =>
-                    setFormData({ ...formData, end: e.target.value })
-                  }
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    backgroundColor: "var(--color-bg-primary)",
-                    color: "var(--color-text-primary)",
-                  }}
-                />
-              </div>
-
-              {/* All Day Toggle */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="allDay"
-                  checked={formData.allDay}
-                  onChange={(e) =>
-                    setFormData({ ...formData, allDay: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded"
-                />
-                <label
-                  htmlFor="allDay"
-                  className="text-sm"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  Sepanjang Hari
-                </label>
-              </div>
-
-              {/* Recurring Toggle */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="recurring"
-                  checked={formData.recurring}
-                  onChange={(e) =>
-                    setFormData({ ...formData, recurring: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded"
-                />
-                <label
-                  htmlFor="recurring"
-                  className="text-sm"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  Berulang
-                </label>
-              </div>
-
-              {/* Color Picker */}
-              <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  Warna
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {COLOR_OPTIONS.map((color) => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          backgroundColor: color.value,
-                        })
-                      }
-                      className="h-8 w-8 rounded-full border-2 transition-transform hover:scale-110"
-                      style={{
-                        backgroundColor: color.value,
-                        borderColor:
-                          formData.backgroundColor === color.value
-                            ? "var(--color-text-primary)"
-                            : "transparent",
-                      }}
-                      title={color.label}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-2">
-                {isEditing && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={isSubmitting}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
-                    style={{ backgroundColor: "#DC2626" }}
-                  >
-                    Hapus
-                  </button>
-                )}
-                <div
-                  className={`flex gap-2 ${!isEditing ? "ml-auto" : ""}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
-                    style={{
-                      borderColor: "var(--color-border)",
-                      color: "var(--color-text-primary)",
-                    }}
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
-                    style={{ backgroundColor: "var(--color-terracotta)" }}
-                  >
-                    {isSubmitting
-                      ? "Menyimpan..."
-                      : isEditing
-                        ? "Perbarui"
-                        : "Simpan"}
-                  </button>
-                </div>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   );
 }

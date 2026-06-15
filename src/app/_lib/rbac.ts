@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/app/_lib/auth";
 import { prisma } from "@/app/_lib/prisma";
 import { cache } from "react";
@@ -35,7 +36,10 @@ export type Permission =
 
 export const getUserPermissions = cache(async (): Promise<Set<Permission>> => {
   const session = await auth();
-  if (!session?.user?.role_id) return new Set();
+  if (!session?.user) {
+    redirect("/login");
+  }
+  if (!session.user.role_id) return new Set();
 
   const rolePermissions = await prisma.rolePermission.findMany({
     where: { role_id: session.user.role_id },
