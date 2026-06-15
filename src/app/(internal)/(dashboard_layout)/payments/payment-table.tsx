@@ -9,6 +9,7 @@ import { formatCurrency } from "@/app/_lib/util/currency";
 import { simulateUnpaidBillPaymentAction } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { upsertPaymentAction, deletePaymentAction } from "./payment-action";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { SearchableSelect } from "@/app/_components/searchable-select";
 import { toast } from "react-toastify";
 
 // --- Type Definitions ---
@@ -398,7 +399,7 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
         size="lg"
       >
         <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-          {/* Booking Select */}
+          {/* Booking Select (searchable) */}
           <div>
             <label
               className="block text-sm font-medium mb-1"
@@ -406,23 +407,15 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
             >
               Pemesanan
             </label>
-            <select
-              value={formBookingId}
-              onChange={(e) => setFormBookingId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
-              style={{
-                borderColor: "var(--color-border)",
-                backgroundColor: "var(--color-bg-card)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              <option value="">Pilih pemesanan...</option>
-              {bookings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.rooms?.room_number ?? "?"} - {b.tenants?.name ?? "?"}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              options={bookings.map((b) => ({
+                value: String(b.id),
+                label: `${b.rooms?.room_number ?? "?"} - ${b.tenants?.name ?? "?"}`,
+              }))}
+              value={formBookingId ? String(formBookingId) : ""}
+              onChange={(v) => setFormBookingId(v ? Number(v) : "")}
+              placeholder="Cari pemesanan..."
+            />
           </div>
 
           {/* Amount */}

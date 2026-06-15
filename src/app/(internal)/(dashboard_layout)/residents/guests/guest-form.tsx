@@ -5,6 +5,7 @@ import { upsertGuestAction, upsertGuestStayAction } from "./guest-action";
 import { toast } from "react-toastify";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import { lastDayOfUtcMonth } from "@/app/_lib/util/business-time";
+import { SearchableSelect } from "@/app/_components/searchable-select";
 import type { GuestRow, BookingOption } from "./guest-table";
 
 interface GuestFormProps {
@@ -174,22 +175,29 @@ export function GuestForm({ guest, bookings, onSuccess }: GuestFormProps) {
             <label className="block text-sm font-medium mb-1" style={labelStyle}>
               Booking <span className="text-red-500">*</span>
             </label>
-            <select
-              value={bookingId}
-              onChange={(e) => setBookingId(parseInt(e.target.value, 10))}
-              required
-              disabled={!!guest}
-              className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none transition-all duration-150 disabled:opacity-60"
-              style={inputStyle}
-            >
-              <option value="">Pilih booking...</option>
-              {bookings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.rooms ? `Kamar ${b.rooms.room_number}` : `Booking #${b.id}`}
-                  {b.tenants ? ` - ${b.tenants.name}` : ""}
-                </option>
-              ))}
-            </select>
+            {guest ? (
+              <input
+                type="text"
+                disabled
+                value={bookings.find((b) => b.id === bookingId)
+                  ? `${bookings.find((b) => b.id === bookingId)?.rooms ? `Kamar ${bookings.find((b) => b.id === bookingId)!.rooms!.room_number}` : `Booking #${bookingId}`}${bookings.find((b) => b.id === bookingId)?.tenants ? ` - ${bookings.find((b) => b.id === bookingId)!.tenants!.name}` : ""}`
+                  : `Booking #${bookingId}`}
+                className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none opacity-60"
+                style={inputStyle}
+              />
+            ) : (
+              <SearchableSelect
+                options={bookings.map((b) => ({
+                  value: String(b.id),
+                  label: `${b.rooms ? `Kamar ${b.rooms.room_number}` : `Booking #${b.id}`}${b.tenants ? ` - ${b.tenants.name}` : ""}`,
+                }))}
+                value={bookingId ? String(bookingId) : ""}
+                onChange={(v) => setBookingId(v ? parseInt(v, 10) : 0)}
+                placeholder="Cari booking..."
+                required
+                isClearable={false}
+              />
+            )}
           </div>
         </div>
 

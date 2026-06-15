@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SearchableSelect } from "@/app/_components/searchable-select";
 
 interface PricingTier {
   id?: string;
@@ -169,24 +170,21 @@ export function AddonForm({ addon, locationId, existingAddons, onSubmit, onCance
         />
       </div>
 
-      {/* Parent Addon */}
+      {/* Parent Addon (searchable) */}
       <div>
         <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-text-primary)" }}>
           Parent Add-on
         </label>
-        <select
+        <SearchableSelect
+          options={parentOptions.map((a) => ({
+            value: a.id,
+            label: a.name,
+          }))}
           value={parentAddonId}
-          onChange={(e) => setParentAddonId(e.target.value)}
-          className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
-          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-card)" }}
-        >
-          <option value="">-- Tidak ada (top-level) --</option>
-          {parentOptions.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setParentAddonId(v)}
+          placeholder="-- Tidak ada (top-level) --"
+          isClearable
+        />
       </div>
 
       {/* Requires Input toggle */}

@@ -234,26 +234,21 @@ export function BookingForm({
         />
       </div>
 
-      {/* Room select */}
+      {/* Room select (searchable) */}
       <div>
         <label className="block text-sm font-medium mb-1" style={labelStyle}>
           Kamar <span className="text-red-500">*</span>
         </label>
-        <select
-          value={roomId || ""}
-          onChange={(e) => setRoomId(parseInt(e.target.value, 10))}
+        <SearchableSelect
+          options={rooms.map((r) => ({
+            value: String(r.id),
+            label: `${r.room_number}${r.roomtypes ? ` (${r.roomtypes.type})` : ""}`,
+          }))}
+          value={roomId ? String(roomId) : ""}
+          onChange={(v) => setRoomId(v ? parseInt(v, 10) : 0)}
+          placeholder="Cari kamar..."
           required
-          className="w-full pl-3 pr-9 py-2.5 text-sm rounded-lg border outline-none"
-          style={inputStyle}
-        >
-          <option value="">Pilih kamar</option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.room_number}
-              {r.roomtypes ? ` (${r.roomtypes.type})` : ""}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {/* Start date */}
@@ -437,20 +432,17 @@ export function BookingForm({
             className="flex gap-2 items-end mb-2"
           >
             <div className="flex-1">
-              <select
+              <SearchableSelect
+                options={addons.map((a) => ({
+                  value: a.id,
+                  label: a.name,
+                }))}
                 value={addon.addon_id}
-                onChange={(e) => updateAddon(index, "addon_id", e.target.value)}
+                onChange={(v) => updateAddon(index, "addon_id", v)}
+                placeholder="Cari add-on..."
                 required
-                className="w-full pl-2 pr-9 py-2 text-sm rounded-lg border outline-none"
-                style={inputStyle}
-              >
-                <option value="">Pilih add-on</option>
-                {addons.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
+                isClearable={false}
+              />
             </div>
             <div className="w-36">
               <input

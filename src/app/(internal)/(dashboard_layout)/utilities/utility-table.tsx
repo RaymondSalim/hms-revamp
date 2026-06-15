@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/app/_components/modal";
+import { SearchableSelect } from "@/app/_components/searchable-select";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import { toast } from "react-toastify";
 import {
@@ -278,26 +279,21 @@ export function UtilityTable({ readings, bookings }: Props) {
         title="Catat Pembacaan Meter"
       >
         <div className="space-y-4">
-          <label className="flex flex-col gap-1 text-sm">
+          <div className="flex flex-col gap-1 text-sm">
             <span style={{ color: "var(--color-text-secondary)" }}>
               Pemesanan
             </span>
-            <select
-              className={inputClass}
-              style={inputStyle}
+            <SearchableSelect
+              options={bookings.map((b) => ({
+                value: String(b.id),
+                label: bookingLabel(b),
+              }))}
               value={bookingId}
-              onChange={(e) => setBookingId(e.target.value)}
-            >
-              {bookings.length === 0 && (
-                <option value="">(Tidak ada pemesanan aktif)</option>
-              )}
-              {bookings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {bookingLabel(b)}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(v) => setBookingId(v)}
+              placeholder={bookings.length === 0 ? "(Tidak ada pemesanan aktif)" : "Cari pemesanan..."}
+              isClearable={false}
+            />
+          </div>
 
           <label className="flex flex-col gap-1 text-sm">
             <span style={{ color: "var(--color-text-secondary)" }}>Jenis</span>
