@@ -11,17 +11,14 @@ const transporter =
         host:
           process.env.SMTP_HOST ||
           "email-smtp.ap-southeast-1.amazonaws.com",
-        port: 465,
+        port: parseInt(process.env.SMTP_PORT || "465", 10),
         secure: true,
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
       })
     : nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        auth: {
-          user: "nora56@ethereal.email",
-          pass: "jn7jnAPss4f63QBp6D",
-        },
+        host: process.env.SMTP_HOST || "localhost",
+        port: parseInt(process.env.SMTP_PORT || "1025", 10),
+        secure: false,
       });
 
 const DEFAULT_FROM = '"MICASA Suites" <noreply@micasasuites.com>';
