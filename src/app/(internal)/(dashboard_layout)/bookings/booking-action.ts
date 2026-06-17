@@ -698,7 +698,7 @@ export async function scheduleEndOfStayAction(
   // Location scope guard: scoped users may only mutate bookings in their locations.
   const b = await prisma.booking.findUnique({
     where: { id: bookingId },
-    select: { rooms: { select: { location_id: true } } },
+    select: { start_date: true, rooms: { select: { location_id: true } } },
   });
   const locationId = b?.rooms?.location_id;
   const scope = await getScopedLocationIds();
@@ -706,15 +706,41 @@ export async function scheduleEndOfStayAction(
     return { success: false, error: "Unauthorized" };
   }
 
+  if (b && endDate < b.start_date) {
+    return { success: false, error: "Tanggal akhir tidak boleh sebelum tanggal mulai pemesanan" };
+  }
+
   try {
-    // 1. Update booking: end_date=endDate, is_rolling=false
+    // 1. Generate all missing monthly bills up to the end month BEFORE setting
+    // is_rolling=false (generateNextMonthlyBill guards on is_rolling).
+    const fullBooking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        rooms: { include: { roomtypes: true, locations: true } },
+        tenants: true,
+        durations: true,
+        deposit: true,
+        addOns: { include: { addOn: { include: { pricing: true } } } },
+        bills: { where: { deletedAt: null }, include: { bill_item: true } },
+      },
+    });
+    if (fullBooking) {
+      const endMonthEnd = lastDayOfUtcMonth(endDate);
+      let cursor = startOfUtcMonth(businessToday());
+      while (cursor <= endMonthEnd) {
+        await generateNextMonthlyBill(fullBooking as any, cursor);
+        cursor = startOfUtcMonth(addUtcMonths(cursor, 1));
+      }
+    }
+
+    // 2. Update booking: end_date=endDate, is_rolling=false
     await prisma.booking.update({
       where: { id: bookingId },
       data: { end_date: endDate, is_rolling: false },
     });
 
-    // 2. Delete bills due AFTER the end month. We must keep the end-month bill
-    // so step 2b can prorate it (the end-month bill's due_date is the last day
+    // 3. Delete bills due AFTER the end month. We must keep the end-month bill
+    // so step 3b can prorate it (the end-month bill's due_date is the last day
     // of the month, which is > endDate when ending mid-month).
     await prisma.bill.deleteMany({
       where: {
@@ -723,7 +749,7 @@ export async function scheduleEndOfStayAction(
       },
     });
 
-    // 2b. Prorate the final month's bill if ending mid-month
+    // 3b. Prorate the final month's bill if ending mid-month
     const endDay = endDate.getUTCDate();
     const endMonth = endDate.getUTCMonth();
     const endYear = endDate.getUTCFullYear();
@@ -795,10 +821,10 @@ export async function scheduleEndOfStayAction(
       }
     }
 
-    // 3. Reallocate payments to remaining bills
+    // 4. Reallocate payments to remaining bills
     await generatePaymentBillMappingFromPaymentsAndBills(bookingId);
 
-    // 4. Rebuild transactions for all payments
+    // 5. Rebuild transactions for all payments
     const payments = await prisma.payment.findMany({
       where: { booking_id: bookingId, deletedAt: null },
     });

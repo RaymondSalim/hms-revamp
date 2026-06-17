@@ -397,6 +397,12 @@ export function BookingTable({
         size="sm"
       >
         <div className="space-y-4">
+          <div
+            className="p-3 rounded-lg text-sm"
+            style={{ backgroundColor: "#FEF3C7", color: "#92400E" }}
+          >
+            <strong>Perhatian:</strong> Tindakan ini tidak dapat dibatalkan. Setelah tanggal akhir ditetapkan, pemesanan tidak dapat dikembalikan ke status bergulir (rolling). Semua tagihan hingga tanggal akhir akan otomatis dibuat.
+          </div>
           <p
             className="text-sm"
             style={{ color: "var(--color-text-secondary)" }}
@@ -415,6 +421,7 @@ export function BookingTable({
               type="date"
               value={endDateValue}
               onChange={(e) => setEndDateValue(e.target.value)}
+              min={scheduleEndModal?.start_date?.split("T")[0] ?? ""}
               className="w-full px-3 py-2.5 text-sm rounded-lg border outline-none"
               style={{
                 borderColor: "var(--color-border)",
@@ -440,9 +447,9 @@ export function BookingTable({
               onClick={handleScheduleEnd}
               disabled={loading || !endDateValue}
               className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50"
-              style={{ backgroundColor: "var(--color-accent)" }}
+              style={{ backgroundColor: "#DC2626" }}
             >
-              {loading ? "Menyimpan..." : "Simpan"}
+              {loading ? "Menyimpan..." : "Akhiri Pemesanan"}
             </button>
           </div>
         </div>
