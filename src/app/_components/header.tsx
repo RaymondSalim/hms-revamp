@@ -93,8 +93,18 @@ export function Header() {
         </h1>
       </div>
 
-      {/* Right side: location picker */}
+      {/* Right side: timezone + location picker */}
       <div className="flex items-center gap-3">
+        <span
+          className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
+          style={{ backgroundColor: "var(--color-bg-primary)", color: "var(--color-text-secondary)" }}
+          title="Semua tanggal dan waktu ditampilkan dalam zona waktu lokasi bisnis (WIB)"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+          WIB
+        </span>
         {locations.length > 0 && (
           <div className="relative" ref={dropdownRef}>
             <button
