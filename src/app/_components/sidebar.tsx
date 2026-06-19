@@ -193,6 +193,15 @@ const navSections: NavSection[] = [
       },
     ],
   },
+  {
+    items: [
+      {
+        label: "Bantuan",
+        href: "/help",
+        icon: <HelpIcon />,
+      },
+    ],
+  },
 ];
 
 export function Sidebar({
@@ -537,6 +546,14 @@ function CompanyIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v14a1 1 0 01-1 1h-3v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3H5a1 1 0 01-1-1V4zm3 1h2v2H7V5zm0 4h2v2H7V9zm4-4h2v2h-2V5zm0 4h2v2h-2V9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function HelpIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
     </svg>
   );
 }

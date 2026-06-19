@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useLocation } from "@/app/_context/location-context";
 import { toggleSidebar } from "@/app/_components/sidebar";
 import { useState, useRef, useEffect } from "react";
+import { TourButton } from "@/app/_components/tour/tour-button";
 
 function useBusinessClock() {
   const [time, setTime] = useState("");
@@ -41,6 +42,7 @@ const breadcrumbMap: Record<string, string> = {
   "/schedule/calendar": "Kalender",
   "/settings/users": "Pengguna",
   "/locations": "Lokasi",
+  "/help": "Bantuan",
 };
 
 export function Header() {
@@ -113,9 +115,11 @@ export function Header() {
         </h1>
       </div>
 
-      {/* Right side: timezone + location picker */}
+      {/* Right side: tour button + timezone + location picker */}
       <div className="flex items-center gap-3">
+        <TourButton />
         <span
+          data-tour="wib-clock"
           className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium"
           style={{ backgroundColor: "var(--color-bg-primary)", color: "var(--color-text-secondary)" }}
           title="Semua tanggal dan waktu ditampilkan dalam zona waktu lokasi bisnis (WIB)"
@@ -126,7 +130,7 @@ export function Header() {
           {businessTime} WIB
         </span>
         {locations.length > 0 && (
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative" ref={dropdownRef} data-tour="location-picker">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all duration-150"
