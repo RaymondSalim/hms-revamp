@@ -5,16 +5,12 @@ import {
   getScopedLocationIds,
   isLocationInScope,
 } from "@/app/_lib/util/location-scope";
-import { computeInvoiceTotals } from "@/app/_lib/util/invoice-totals";
-import PDFDocument from "pdfkit";
-import { formatUtcDate } from "@/app/_lib/util/business-time";
+import {
+  generateInvoicePdf,
+  getInvoiceFilename,
+} from "@/app/_lib/util/generate-invoice-pdf";
 
-// pdfkit relies on Node APIs and reads bundled .afm font metrics at runtime.
 export const runtime = "nodejs";
-
-function rupiah(n: number): string {
-  return `Rp ${n.toLocaleString("id-ID")}`;
-}
 
 export async function GET(
   request: NextRequest,
@@ -46,123 +42,33 @@ export async function GET(
   if (!bill)
     return NextResponse.json({ error: "Bill not found" }, { status: 404 });
 
-  // Location-scope guard: a scoped user must not download invoices for bookings
-  // outside their locations. Resolve the owning location and 404 (not 403) on a
-  // miss so we don't confirm the bill exists to an out-of-scope caller.
   const billLocationId = bill.bookings?.rooms?.location_id ?? null;
   const scope = await getScopedLocationIds();
   if (billLocationId == null || !isLocationInScope(scope, billLocationId)) {
     return NextResponse.json({ error: "Bill not found" }, { status: 404 });
   }
 
-  const { subtotal, tax, total, paid, outstanding } = computeInvoiceTotals(
-    bill.bill_item.map((i) => ({
-      description: i.description,
-      amount: Number(i.amount),
-    })),
-    bill.paymentBills.map((p) => ({ amount: Number(p.amount) }))
-  );
-
-  const tenant = bill.bookings?.tenants ?? null;
-  const room = bill.bookings?.rooms ?? null;
-  const location = room?.locations ?? null;
-
-  // --- Build the PDF ---
-  const doc = new PDFDocument({ size: "A4", margin: 50 });
-  const chunks: Buffer[] = [];
-  doc.on("data", (c) => chunks.push(c as Buffer));
-  const done = new Promise<Buffer>((resolve) =>
-    doc.on("end", () => resolve(Buffer.concat(chunks)))
-  );
-
-  // Header
-  doc.fontSize(22).font("Helvetica-Bold").text("INVOICE / TAGIHAN");
-  doc.moveDown(0.3);
-  doc
-    .fontSize(11)
-    .font("Helvetica")
-    .text(`No. Invoice: ${bill.invoice_number ?? "-"}`);
-  doc.moveDown(0.8);
-
-  // Location info
-  if (location) {
-    doc.font("Helvetica-Bold").fontSize(12).text(location.name);
-    if (location.address) {
-      doc.font("Helvetica").fontSize(10).text(location.address);
-    }
-    doc.moveDown(0.6);
-  }
-
-  // Tenant + room info
-  doc.font("Helvetica").fontSize(10);
-  doc.text(`Penyewa: ${tenant?.name ?? "-"}`);
-  doc.text(`Kamar: ${room?.room_number ?? "-"}`);
-  doc.text(`Deskripsi: ${bill.description}`);
-  doc.text(`Jatuh Tempo: ${formatUtcDate(bill.due_date)}`);
-  doc.moveDown(0.8);
-
-  // Divider
-  doc
-    .moveTo(doc.page.margins.left, doc.y)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-    .stroke();
-  doc.moveDown(0.5);
-
-  // Line items
-  doc.font("Helvetica-Bold").fontSize(10);
-  const startY = doc.y;
-  doc.text("Deskripsi", doc.page.margins.left, startY);
-  doc.text("Jumlah", doc.page.margins.left, startY, { align: "right" });
-  doc.moveDown(0.4);
-  doc.font("Helvetica").fontSize(10);
-
-  for (const item of bill.bill_item) {
-    const y = doc.y;
-    doc.text(item.description, doc.page.margins.left, y, { width: 350 });
-    doc.text(rupiah(Number(item.amount)), doc.page.margins.left, y, {
-      align: "right",
-    });
-    doc.moveDown(0.3);
-  }
-
-  if (bill.bill_item.length === 0) {
-    doc.text("Tidak ada item", { align: "center" });
-    doc.moveDown(0.3);
-  }
-
-  doc.moveDown(0.3);
-  doc
-    .moveTo(doc.page.margins.left, doc.y)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-    .stroke();
-  doc.moveDown(0.5);
-
-  // Totals (right-aligned label/value rows)
-  const writeTotal = (label: string, value: number, bold = false) => {
-    const y = doc.y;
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10);
-    doc.text(label, doc.page.margins.left, y, { align: "left" });
-    doc.text(rupiah(value), doc.page.margins.left, y, { align: "right" });
-    doc.moveDown(0.4);
+  const pdfInput = {
+    invoice_number: bill.invoice_number,
+    description: bill.description,
+    due_date: bill.due_date,
+    bill_item: bill.bill_item,
+    paymentBills: bill.paymentBills,
+    tenant: bill.bookings?.tenants ?? null,
+    room: bill.bookings?.rooms ?? null,
+    location: bill.bookings?.rooms?.locations ?? null,
   };
 
-  writeTotal("Subtotal", subtotal);
-  if (tax > 0) writeTotal("PPN", tax);
-  writeTotal("Total", total, true);
-  writeTotal("Dibayar", paid);
-  writeTotal("Sisa Tagihan", outstanding, true);
-
-  doc.end();
-  const pdf = await done;
-
-  const rawName = bill.invoice_number ?? String(bill.id);
-  const safeName = rawName.replace(/\//g, "-");
+  const [pdf, filename] = await Promise.all([
+    generateInvoicePdf(pdfInput),
+    getInvoiceFilename(pdfInput),
+  ]);
 
   return new NextResponse(new Uint8Array(pdf), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="invoice-${safeName}.pdf"`,
+      "Content-Disposition": `attachment; filename="${filename}.pdf"`,
     },
   });
 }
