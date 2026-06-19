@@ -11,6 +11,7 @@ import {
   addBillItemAction,
   updateBillItemAction,
   deleteBillItemAction,
+  resendBillEmailAction,
 } from "./bill-action";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
@@ -347,6 +348,18 @@ export function BillTable({ bills }: Props) {
               label: "Edit",
               icon: Icons.edit,
               onClick: () => { setEditBillModal(row.original); setDueDateValue(row.original.due_date.split("T")[0]); resetItemForm(); },
+            },
+            {
+              label: "Kirim Email",
+              icon: Icons.email,
+              onClick: async () => {
+                const result = await resendBillEmailAction(row.original.id);
+                if (result.success) {
+                  toast.success("Email tagihan berhasil dikirim");
+                } else {
+                  toast.error(result.error ?? "Gagal mengirim email");
+                }
+              },
             },
           ]}
           maxInline={2}

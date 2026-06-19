@@ -6,6 +6,7 @@ import { checkPermission } from "@/app/_lib/rbac";
 import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { assignInvoiceNumber } from "@/app/_lib/util/invoice-number";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
+import { sendBillReminderEmail } from "@/app/_lib/mailer";
 
 // BL-003: Payment Auto-Allocation Simulation
 export async function simulateUnpaidBillPaymentAction(
@@ -264,4 +265,43 @@ export async function deleteBillItemAction(itemId: number) {
   await generatePaymentBillMappingFromPaymentsAndBills(item.bill.booking_id);
   revalidatePath("/bills");
   return { success: true };
+}
+
+export async function resendBillEmailAction(billId: number) {
+  const { authorized } = await checkPermission("bills.manage");
+  if (!authorized) return { success: false, error: "Tidak memiliki akses" };
+
+  const scope = await getScopedLocationIds();
+
+  const bill = await prisma.bill.findUnique({
+    where: { id: billId, deletedAt: null },
+    include: {
+      bill_item: true,
+      paymentBills: true,
+      bookings: {
+        include: {
+          tenants: true,
+          rooms: { include: { locations: true } },
+        },
+      },
+    },
+  });
+
+  if (!bill) return { success: false, error: "Tagihan tidak ditemukan" };
+
+  const locationId = bill.bookings.rooms?.location_id;
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Tidak memiliki akses" };
+  }
+
+  if (!bill.bookings.tenants?.email) {
+    return { success: false, error: "Penyewa tidak memiliki alamat email" };
+  }
+
+  try {
+    await sendBillReminderEmail(bill);
+    return { success: true };
+  } catch {
+    return { success: false, error: "Gagal mengirim email. Silakan coba lagi." };
+  }
 }
