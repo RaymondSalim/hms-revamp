@@ -16,7 +16,7 @@ export interface InvoicePdfInput {
   invoice_number: string | null;
   description: string;
   due_date: Date;
-  bill_item: Array<{ description: string; amount: unknown }>;
+  bill_item: Array<{ description?: string | null; amount: unknown }>;
   paymentBills: Array<{ amount: unknown }>;
   tenant: { name: string } | null;
   room: { room_number: string } | null;
@@ -49,7 +49,7 @@ async function getCompanyInfo(): Promise<{ name: string; logoUrl: string }> {
 }
 
 function buildItemsTable(
-  items: Array<{ description: string; amount: unknown }>
+  items: Array<{ description?: string | null; amount: unknown }>
 ): string {
   if (items.length === 0) {
     return `<table><thead><tr><th>Deskripsi</th><th>Jumlah</th></tr></thead><tbody><tr><td colspan="2" style="text-align:center;color:#94a3b8;">Tidak ada item</td></tr></tbody></table>`;
@@ -57,7 +57,7 @@ function buildItemsTable(
   const rows = items
     .map(
       (i) =>
-        `<tr><td>${i.description}</td><td>${rupiah(Number(i.amount))}</td></tr>`
+        `<tr><td>${i.description ?? "-"}</td><td>${rupiah(Number(i.amount))}</td></tr>`
     )
     .join("\n");
   return `<table><thead><tr><th>Deskripsi</th><th>Jumlah</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -68,7 +68,7 @@ export async function generateInvoicePdf(
 ): Promise<Buffer> {
   const { subtotal, tax, total, paid, outstanding } = computeInvoiceTotals(
     input.bill_item.map((i) => ({
-      description: i.description,
+      description: i.description ?? "",
       amount: Number(i.amount),
     })),
     input.paymentBills.map((p) => ({ amount: Number(p.amount) }))
