@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/monthly-billing",
+      "schedule": "0 0 1 * *"
+    },
+    {
+      "path": "/api/tasks/email/invoice-reminder",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/booking-status-sync",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/late-fees",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

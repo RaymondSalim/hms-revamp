@@ -1,0 +1,408 @@
+"use server";
+
+import { prisma } from "@/app/_lib/prisma";
+import { uploadToS3, deleteFromS3 } from "@/app/_lib/s3";
+import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
+import { roundMoney } from "@/app/_lib/util/money";
+import { PAYMENT_STATUS } from "@/app/_lib/util/status";
+import { paymentSchema } from "@/app/_lib/zod/payment/zod";
+import { revalidatePath } from "next/cache";
+import { checkPermission } from "@/app/_lib/rbac";
+import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
+import { validateUploadDataUrl } from "@/app/_lib/util/upload-file";
+import { logAudit } from "@/app/_lib/audit";
+
+// BL-005: Transaction Splitting.
+//
+// The whole rebuild (delete prior transactions + recreate income/credit/deposit
+// transactions + adjust deposit status) runs in a single interactive
+// transaction so a partial failure can't leave a payment with some but not all
+// of its derived transactions. Idempotent: safe to call repeatedly.
+//
+// NOTE: must NOT be called from inside another interactive transaction (Prisma
+// does not support nesting). Callers that rebuild many payments loop over this
+// sequentially; each call is independently atomic.
+export async function createOrUpdatePaymentTransactions(paymentId: number) {
+  await prisma.$transaction(async (tx) => {
+  // Delete existing transactions linked to this payment
+  await tx.transaction.deleteMany({
+    where: { related_id: { path: ["payment_id"], equals: paymentId } },
+  });
+
+  // Fetch payment with its bill allocations and bill items
+  const payment = await tx.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      paymentBills: {
+        include: {
+          bill: {
+            include: {
+              bill_item: true,
+              bookings: { include: { rooms: true, deposit: true } },
+            },
+          },
+        },
+      },
+      bookings: { include: { rooms: true, deposit: true } },
+    },
+  });
+
+  if (!payment) return;
+
+  // Verification gate: only create transactions for verified payments.
+  // null status is assumed verified (backwards compat).
+  if (payment.status_id === PAYMENT_STATUS.PENDING || payment.status_id === PAYMENT_STATUS.REJECTED) {
+    return;
+  }
+
+  const locationId = payment.bookings.rooms?.location_id;
+  if (!locationId) return;
+
+  let depositTotal = 0;
+  let regularTotal = 0;
+  let excessTotal = 0;
+  let depositId: number | null = null;
+
+  for (const pb of payment.paymentBills) {
+    let pbRemaining = Number(pb.amount);
+
+    // Find bill items with deposit_id in related_id (these are deposit items)
+    const depositItems = pb.bill.bill_item.filter(
+      (item) =>
+        item.related_id &&
+        typeof item.related_id === "object" &&
+        (item.related_id as Record<string, unknown>).deposit_id
+    );
+    const regularItems = pb.bill.bill_item.filter(
+      (item) =>
+        !item.related_id ||
+        typeof item.related_id !== "object" ||
+        !(item.related_id as Record<string, unknown>).deposit_id
+    );
+
+    // Prioritize deposit items first
+    for (const dItem of depositItems) {
+      if (pbRemaining <= 0) break;
+      const itemAmount = Number(dItem.amount);
+      const allocated = Math.min(pbRemaining, itemAmount);
+      depositTotal += allocated;
+      depositId =
+        (dItem.related_id as Record<string, unknown>).deposit_id as number;
+      pbRemaining -= allocated;
+    }
+
+    // Remaining goes to regular
+    for (const rItem of regularItems) {
+      if (pbRemaining <= 0) break;
+      const itemAmount = Number(rItem.amount);
+      const allocated = Math.min(pbRemaining, itemAmount);
+      regularTotal += allocated;
+      pbRemaining -= allocated;
+    }
+
+    // If there's still remaining after all items, it's overpayment
+    if (pbRemaining > 0) {
+      excessTotal += pbRemaining;
+    }
+  }
+
+  // Round each leg to whole rupiah so stored Transaction amounts stay exact and
+  // float drift from the Number()-based split above can't accumulate.
+  depositTotal = roundMoney(depositTotal);
+  regularTotal = roundMoney(regularTotal);
+  excessTotal = roundMoney(excessTotal);
+
+  // Create "Deposit" INCOME transaction if depositTotal > 0
+  if (depositTotal > 0 && depositId) {
+    await tx.transaction.create({
+      data: {
+        amount: depositTotal,
+        description: "Deposit",
+        date: payment.payment_date,
+        category: "Deposit",
+        type: "INCOME",
+        location_id: locationId,
+        related_id: { payment_id: paymentId, deposit_id: depositId },
+      },
+    });
+
+    // BL-006: If deposit status is UNPAID, update to HELD
+    const deposit = payment.bookings.deposit;
+    if (deposit && deposit.status === "UNPAID") {
+      await tx.deposit.update({
+        where: { id: deposit.id },
+        data: { status: "HELD" },
+      });
+    }
+  }
+
+  // Create "Biaya Sewa" INCOME transaction if regularTotal > 0
+  if (regularTotal > 0) {
+    await tx.transaction.create({
+      data: {
+        amount: regularTotal,
+        description: "Biaya Sewa",
+        date: payment.payment_date,
+        category: "Sewa",
+        type: "INCOME",
+        location_id: locationId,
+        related_id: { payment_id: paymentId },
+      },
+    });
+  }
+
+  // Create "Kelebihan Bayar" CREDIT transaction if there's overpayment
+  // Overpayment is a liability (held for / owed to the tenant), not revenue.
+  if (excessTotal > 0) {
+    await tx.transaction.create({
+      data: {
+        amount: excessTotal,
+        description: "Kelebihan Bayar",
+        date: payment.payment_date,
+        category: "Kelebihan Bayar",
+        type: "CREDIT",
+        location_id: locationId,
+        related_id: { payment_id: paymentId },
+      },
+    });
+  }
+
+  // BL-007: If no deposit transactions remain for a deposit, revert to UNPAID
+  if (payment.bookings.deposit && !depositId) {
+    const deposit = payment.bookings.deposit;
+    const remainingDepositTx = await tx.transaction.findMany({
+      where: {
+        related_id: { path: ["deposit_id"], equals: deposit.id },
+        type: "INCOME",
+      },
+    });
+    if (remainingDepositTx.length === 0 && deposit.status === "HELD") {
+      await tx.deposit.update({
+        where: { id: deposit.id },
+        data: { status: "UNPAID" },
+      });
+    }
+  }
+  });
+}
+
+// BL-007 helper: Check if deposit should revert to UNPAID
+async function checkDepositRevert(bookingId: number) {
+  const deposit = await prisma.deposit.findUnique({
+    where: { booking_id: bookingId },
+  });
+  if (!deposit || deposit.status !== "HELD") return;
+
+  const depositTransactions = await prisma.transaction.findMany({
+    where: {
+      related_id: { path: ["deposit_id"], equals: deposit.id },
+      type: "INCOME",
+      deletedAt: null,
+    },
+  });
+
+  if (depositTransactions.length === 0) {
+    await prisma.deposit.update({
+      where: { id: deposit.id },
+      data: { status: "UNPAID" },
+    });
+  }
+}
+
+export async function upsertPaymentAction(data: {
+  id?: number;
+  booking_id: number;
+  amount: number;
+  payment_date: string | Date;
+  status_id?: number;
+  payment_proof?: string; // base64
+  payment_proof_name?: string;
+  allocation_mode: "auto" | "manual";
+  payment_method?: "CASH" | "BANK_TRANSFER" | "EWALLET";
+  manual_allocations?: Array<{ bill_id: number; amount: number }>;
+}) {
+  const { authorized } = await checkPermission("payments.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate payments in their locations.
+  const upsertBooking = await prisma.booking.findUnique({
+    where: { id: data.booking_id },
+    select: { rooms: { select: { location_id: true } } },
+  });
+  const locationId = upsertBooking?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  // Validate with Zod
+  const parsed = paymentSchema.safeParse({
+    booking_id: data.booking_id,
+    amount: data.amount,
+    payment_date: data.payment_date,
+    status_id: data.status_id,
+    allocation_mode: data.allocation_mode,
+    payment_method: data.payment_method,
+    manual_allocations: data.manual_allocations,
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Validasi gagal" };
+  }
+
+  // Manual mode: validate sum equals amount. IDR is whole-rupiah, so round both
+  // sides and compare exactly rather than using a float tolerance.
+  if (data.allocation_mode === "manual" && data.manual_allocations) {
+    const sum = data.manual_allocations.reduce((s, a) => s + a.amount, 0);
+    if (roundMoney(sum) !== roundMoney(data.amount)) {
+      return {
+        success: false,
+        error: `Total alokasi manual (${sum}) tidak sama dengan jumlah pembayaran (${data.amount})`,
+      };
+    }
+  }
+
+  // Handle S3 upload for payment proof
+  let proofKey: string | undefined;
+  if (data.payment_proof && data.payment_proof_name) {
+    const upload = validateUploadDataUrl(data.payment_proof);
+    if (!upload.ok) {
+      return { success: false, error: upload.error };
+    }
+    const timestamp = new Date().toISOString();
+    const key = `booking-payments/${data.booking_id}/${timestamp}/${data.payment_proof_name}`;
+    await uploadToS3(key, upload.buffer, upload.mime);
+    proofKey = key;
+  }
+
+  let paymentId: number;
+
+  if (data.id) {
+    // Update existing payment
+    const existing = await prisma.payment.findUnique({ where: { id: data.id } });
+    if (!existing) return { success: false, error: "Pembayaran tidak ditemukan" };
+
+    // Delete old proof from S3 if we have a new one
+    if (proofKey && existing.payment_proof) {
+      await deleteFromS3(existing.payment_proof).catch(() => {});
+    }
+
+    await prisma.payment.update({
+      where: { id: data.id },
+      data: {
+        amount: data.amount,
+        payment_date: new Date(data.payment_date),
+        status_id: data.status_id ?? 1,
+        allocation_mode: data.allocation_mode,
+        payment_method: data.payment_method ?? null,
+        ...(proofKey && { payment_proof: proofKey }),
+      },
+    });
+    paymentId = data.id;
+  } else {
+    // Create new payment
+    const payment = await prisma.payment.create({
+      data: {
+        booking_id: data.booking_id,
+        amount: data.amount,
+        payment_date: new Date(data.payment_date),
+        status_id: data.status_id ?? 1,
+        payment_proof: proofKey,
+        allocation_mode: data.allocation_mode,
+        payment_method: data.payment_method ?? null,
+      },
+    });
+    paymentId = payment.id;
+  }
+
+  // Handle allocation
+  if (data.allocation_mode === "auto") {
+    // Auto mode: regenerate all mappings for this booking
+    await generatePaymentBillMappingFromPaymentsAndBills(data.booking_id);
+  } else {
+    // Manual mode: delete existing and create new PaymentBill records
+    await prisma.paymentBill.deleteMany({ where: { payment_id: paymentId } });
+    if (data.manual_allocations) {
+      for (const alloc of data.manual_allocations) {
+        if (alloc.amount > 0) {
+          await prisma.paymentBill.create({
+            data: {
+              payment_id: paymentId,
+              bill_id: alloc.bill_id,
+              amount: alloc.amount,
+            },
+          });
+        }
+      }
+    }
+  }
+
+  // Create/update transactions
+  await createOrUpdatePaymentTransactions(paymentId);
+
+  revalidatePath("/payments");
+  await logAudit(`payment.${data.id ? "updated" : "created"}: id=${paymentId}, amount=${data.amount}, booking_id=${data.booking_id}`);
+  return { success: true, paymentId };
+}
+
+export async function deletePaymentAction(paymentId: number) {
+  const { authorized } = await checkPermission("payments.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
+  // Location scope guard: scoped users may only mutate payments in their locations.
+  const p = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    select: { bookings: { select: { rooms: { select: { location_id: true } } } } },
+  });
+  const locationId = p?.bookings?.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { bookings: true },
+  });
+
+  if (!payment) return { success: false, error: "Pembayaran tidak ditemukan" };
+
+  const bookingId = payment.booking_id;
+
+  // Soft-delete: stamp the payment and its transactions so the audit ledger
+  // is preserved. PaymentBills are derived allocation mappings (rebuilt
+  // idempotently below), not audit records, so they are removed to avoid the
+  // still-active bill appearing paid by a deleted payment.
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.updateMany({
+      where: { related_id: { path: ["payment_id"], equals: paymentId } },
+      data: { deletedAt: now },
+    });
+    await tx.paymentBill.deleteMany({ where: { payment_id: paymentId } });
+    await tx.payment.update({
+      where: { id: paymentId },
+      data: { deletedAt: now },
+    });
+  });
+
+  // BL-007: Check deposit status revert
+  await checkDepositRevert(bookingId);
+
+  // Regenerate remaining payment mappings if any payments left
+  const remainingPayments = await prisma.payment.findMany({
+    where: { booking_id: bookingId, deletedAt: null },
+  });
+
+  if (remainingPayments.length > 0) {
+    await generatePaymentBillMappingFromPaymentsAndBills(bookingId);
+    // Rebuild transactions for remaining payments
+    for (const p of remainingPayments) {
+      await createOrUpdatePaymentTransactions(p.id);
+    }
+  }
+
+  revalidatePath("/payments");
+  await logAudit(`payment.deleted: id=${paymentId}, booking_id=${bookingId}`);
+  return { success: true };
+}

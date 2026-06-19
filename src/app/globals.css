@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg-primary: #FEFBF6;
+  --color-bg-sidebar: #1E293B;
+  --color-bg-sidebar-hover: #334155;
+  --color-bg-sidebar-active: #0F172A;
+  --color-bg-card: #FFFFFF;
+  --color-bg-header: #FFFFFF;
+
+  --color-text-primary: #1E293B;
+  --color-text-secondary: #64748B;
+  --color-text-sidebar: #E2E8F0;
+  --color-text-sidebar-muted: #94A3B8;
+
+  --color-accent: #C2410C;
+  --color-accent-hover: #9A3412;
+  --color-accent-light: #FFF7ED;
+  --color-warning: #D97706;
+  --color-success: #059669;
+  --color-danger: #DC2626;
+
+  --color-border: #E7E5E4;
+  --color-border-focus: #C2410C;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+@theme inline {
+  --font-display: var(--font-dm-serif);
+  --font-body: var(--font-plus-jakarta);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body), system-ui, sans-serif;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display), serif;
+  }
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748B'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+  }
+}
+
+/* TipTap editor styles */
+.tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+.tiptap table td,
+.tiptap table th {
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.6rem;
+  min-width: 80px;
+  vertical-align: top;
+}
+.tiptap table th {
+  background-color: #f8f8f8;
+  font-weight: 600;
+}
+.tiptap table .selectedCell {
+  background-color: #e0f2fe;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+  pointer-events: none;
+  height: 0;
+}
+

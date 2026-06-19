@@ -1,6 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters", "omitApi"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -14,14 +13,15 @@ model Booking {
   start_date          DateTime @db.Date
   duration_id         Int?
   status_id           Int?
-  fee                 Decimal  @db.Decimal(10, 2)
+  fee                 Decimal  @db.Decimal(12, 2)
   tenant_id           String?
   end_date            DateTime? @db.Date
-  second_resident_fee Decimal? @db.Decimal(10, 2)
+  second_resident_fee Decimal? @db.Decimal(12, 2)
   is_rolling          Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+  deletedAt DateTime?
 
   addOns          BookingAddOn[]
   bills           Bill[]
@@ -34,7 +34,13 @@ model Booking {
   guests          Guest[]
   payments        Payment[]
   penalties       Penalty[]
+  billingPolicies BillingPolicy[]
+  meterReadings   MeterReading[]
 
+  @@index([room_id])
+  @@index([status_id])
+  @@index([tenant_id])
+  @@index([duration_id])
   @@map("bookings")
 }
 
@@ -55,14 +61,16 @@ model CheckInOutLog {
   booking_id Int
   event_type String   @db.VarChar(255)
   event_date DateTime @db.Date
-  tenant_id  String
+  tenant_id  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
   bookings Booking @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tenant   Tenant  @relation(fields: [tenant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  tenant   Tenant?  @relation(fields: [tenant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
+  @@index([booking_id])
+  @@index([tenant_id])
   @@map("checkinoutlogs")
 }
 
@@ -89,11 +97,13 @@ model Transaction {
 
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @default(now()) @updatedAt
+  deletedAt   DateTime?
   location_id Int
   type        TransactionType
   related_id  Json?
   locations   Location        @relation(fields: [location_id], references: [id], onUpdate: NoAction)
 
+  @@index([location_id])
   @@map("transactions")
 }
 
@@ -109,6 +119,7 @@ model Guest {
   GuestStay  GuestStay[]
   booking    Booking     @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([booking_id])
   @@map("guests")
 }
 
@@ -117,12 +128,13 @@ model GuestStay {
   guest_id   Int
   start_date DateTime @db.Date
   end_date   DateTime @db.Date
-  daily_fee  Decimal  @db.Decimal(10, 2)
+  daily_fee  Decimal  @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
   guest     Guest    @relation(fields: [guest_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([guest_id])
   @@map("guest_stays")
 }
 
@@ -133,21 +145,26 @@ model Log {
   site_user_id String
   siteusers    SiteUser  @relation(fields: [site_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([site_user_id])
   @@map("logs")
 }
 
 model Bill {
-  id          Int      @id @default(autoincrement())
-  booking_id  Int
-  description String   @db.VarChar(255)
-  due_date    DateTime @db.Date
+  id             Int      @id @default(autoincrement())
+  booking_id     Int
+  description    String   @db.VarChar(255)
+  due_date       DateTime @db.Date
+  invoice_number String?  @unique @db.VarChar(50)
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now()) @updatedAt
+  deletedAt    DateTime?
   bill_item    BillItem[]
   bookings     Booking       @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   paymentBills PaymentBill[]
+  penalties    Penalty[]
 
+  @@unique([booking_id, due_date])
   @@map("bills")
 }
 
@@ -155,7 +172,7 @@ model BillItem {
   id                   Int     @id @default(autoincrement())
   bill_id              Int
   description          String  @db.VarChar(255)
-  amount               Decimal @db.Decimal(10, 2)
+  amount               Decimal @db.Decimal(12, 2)
   internal_description String? @db.VarChar(255)
 
   createdAt  DateTime @default(now())
@@ -168,31 +185,55 @@ model BillItem {
   @@map("bill_items")
 }
 
+model MeterReading {
+  id             Int      @id @default(autoincrement())
+  booking_id     Int
+  utility_type   String   @db.VarChar(50) // "electricity" | "water"
+  reading_date   DateTime @db.Date
+  reading_value  Decimal  @db.Decimal(12, 2)
+  previous_value Decimal? @db.Decimal(12, 2)
+  rate_per_unit  Decimal  @db.Decimal(12, 2)
+  photo_proof    String?  @db.VarChar(512)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+  booking        Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+
+  @@index([booking_id])
+  @@map("meter_readings")
+}
+
 model Payment {
-  id            Int      @id @default(autoincrement())
-  booking_id    Int
-  amount        Decimal  @db.Decimal(10, 2)
-  payment_date  DateTime @db.Date
-  payment_proof String?  @db.VarChar(255)
-  status_id     Int?
+  id              Int      @id @default(autoincrement())
+  booking_id      Int
+  amount          Decimal  @db.Decimal(12, 2)
+  payment_date    DateTime @db.Date
+  payment_proof   String?  @db.VarChar(255)
+  status_id       Int?
+  allocation_mode String   @default("auto") @db.VarChar(10)
+  payment_method  PaymentMethod?
 
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt
+  deletedAt       DateTime?
   paymentBills    PaymentBill[]
   bookings        Booking        @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   paymentstatuses PaymentStatus? @relation(fields: [status_id], references: [id], onUpdate: NoAction)
 
+  @@index([booking_id])
+  @@index([status_id])
   @@map("payments")
 }
 
 model PaymentBill {
   payment_id Int
   bill_id    Int
-  amount     Decimal @db.Decimal(10, 2)
+  amount     Decimal @db.Decimal(12, 2)
   id         Int     @id @default(autoincrement())
   bill       Bill    @relation(fields: [bill_id], references: [id], onDelete: Cascade)
   payment    Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
 
+  @@index([bill_id])
+  @@index([payment_id])
   @@map("payment_bills")
 }
 
@@ -240,6 +281,7 @@ model RolePermission {
   roles       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([role_id, permission_id])
+  @@index([permission_id])
   @@map("rolepermissions")
 }
 
@@ -271,6 +313,9 @@ model Room {
   roomstatuses RoomStatus? @relation(fields: [status_id], references: [id], onUpdate: NoAction)
 
   @@unique([room_number, location_id])
+  @@index([location_id])
+  @@index([room_type_id])
+  @@index([status_id])
   @@map("rooms")
 }
 
@@ -299,6 +344,8 @@ model RoomTypeDuration {
   roomtypes RoomType @relation(fields: [room_type_id], references: [id], onUpdate: NoAction)
 
   @@unique([room_type_id, duration_id, location_id])
+  @@index([duration_id])
+  @@index([location_id])
   @@map("roomtypedurations")
 }
 
@@ -352,7 +399,9 @@ model SiteUser {
   logs        Log[]
   sessions    Session[]
   roles       Role?     @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+  userLocations UserLocation[]
 
+  @@index([role_id])
   @@map("siteusers")
 }
 
@@ -374,6 +423,7 @@ model Account {
   siteUser  SiteUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
+  @@index([userId])
   @@map("accounts")
 }
 
@@ -386,6 +436,7 @@ model Session {
   updatedAt DateTime @default(now()) @updatedAt
   siteUser  SiteUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("sessions")
 }
 
@@ -399,22 +450,27 @@ model VerificationToken {
 }
 
 model Penalty {
-  id          Int     @id @default(autoincrement())
-  description String  @db.VarChar(255)
-  amount      Decimal @db.Decimal(10, 2)
-  booking_id  Int
+  id           Int       @id @default(autoincrement())
+  description  String    @db.VarChar(255)
+  amount       Decimal   @db.Decimal(12, 2)
+  booking_id   Int
+  bill_id      Int?      @unique
+  penalty_date DateTime? @db.Date
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
   bookings  Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  bill      Bill?    @relation(fields: [bill_id], references: [id], onDelete: SetNull)
 
+  @@index([booking_id])
   @@map("penalties")
 }
 
 model Location {
-  id      Int    @id @default(autoincrement())
-  name    String @db.VarChar(255)
-  address String @db.VarChar(255)
+  id      Int     @id @default(autoincrement())
+  name    String  @db.VarChar(255)
+  address String  @db.VarChar(255)
+  code    String? @db.VarChar(10)
 
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @default(now()) @updatedAt
@@ -422,8 +478,48 @@ model Location {
   rooms            Room[]
   RoomTypeDuration RoomTypeDuration[]
   transactions     Transaction[]
+  billingPolicies  BillingPolicy[]
+  userLocations UserLocation[]
 
   @@map("locations")
+}
+
+model UserLocation {
+  user_id     String
+  location_id Int
+
+  createdAt DateTime @default(now())
+  user      SiteUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  location  Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, location_id])
+  @@index([location_id])
+  @@map("user_locations")
+}
+
+model BillingPolicy {
+  id                          Int      @id @default(autoincrement())
+  location_id                 Int?
+  booking_id                  Int?
+  late_fee_type               String?  @db.VarChar(20)
+  late_fee_amount             Decimal? @db.Decimal(12, 2)
+  grace_period_days           Int?     @default(0)
+  billing_cycle_day           Int?     @default(0)
+  proration_method            String?  @db.VarChar(20)
+  rate_escalation_percentage  Decimal? @db.Decimal(5, 2)
+  rate_escalation_frequency   Int?
+  tax_rate                    Decimal? @db.Decimal(5, 2)
+  reminder_days_before        Int?     @default(7)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  location Location? @relation(fields: [location_id], references: [id])
+  booking  Booking?  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+
+  @@unique([location_id, booking_id])
+  @@index([booking_id])
+  @@map("billing_policies")
 }
 
 model Tenant {
@@ -459,7 +555,7 @@ model Tenant {
 model EmailLogs {
   id      Int    @id @default(autoincrement())
   status  String @db.VarChar(255)
-  payload String @db.VarChar(4096)
+  payload String @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -468,6 +564,19 @@ model EmailLogs {
   to        String   @db.VarChar(255)
 
   @@map("emaillogs")
+}
+
+model EmailTemplate {
+  id           Int      @id @default(autoincrement())
+  template_key String   @unique @db.VarChar(64)
+  subject      String   @db.VarChar(255)
+  body_html    String   @db.Text
+  is_enabled   Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("email_templates")
 }
 
 model Event {
@@ -506,11 +615,13 @@ model AddOn {
   bookings    BookingAddOn[]
 
   @@unique([name, location_id])
+  @@index([location_id])
+  @@index([parent_addon_id])
 }
 
 model AddOnPricing {
   id              String  @id @default(cuid())
-  price           Float
+  price           Decimal @db.Decimal(12, 2)
   addon_id        String
   interval_end    Int?
   interval_start  Int
@@ -519,6 +630,8 @@ model AddOnPricing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   addOn     AddOn    @relation(fields: [addon_id], references: [id])
+
+  @@index([addon_id])
 }
 
 model BookingAddOn {
@@ -534,16 +647,19 @@ model BookingAddOn {
   updatedAt DateTime @updatedAt
   addOn     AddOn    @relation(fields: [addon_id], references: [id])
   booking   Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+
+  @@index([addon_id])
+  @@index([booking_id])
 }
 
 model Deposit {
   id              Int           @id @default(autoincrement())
   booking_id      Int
-  amount          Decimal       @db.Decimal(10, 2)
+  amount          Decimal       @db.Decimal(12, 2)
   status          DepositStatus
   refunded_at     DateTime?
   applied_at      DateTime?
-  refunded_amount Decimal?      @db.Decimal(10, 2)
+  refunded_amount Decimal?      @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -554,9 +670,27 @@ model Deposit {
   @@map("deposits")
 }
 
+model InvoiceSequence {
+  id          Int @id @default(autoincrement())
+  location_id Int
+  year        Int
+  month       Int
+  last_number Int @default(0)
+
+  @@unique([location_id, year, month])
+  @@map("invoice_sequences")
+}
+
 enum TransactionType {
   INCOME
   EXPENSE
+  CREDIT
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  EWALLET
 }
 
 enum BillType {
