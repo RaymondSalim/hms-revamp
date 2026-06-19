@@ -8,6 +8,7 @@ import { isEmailTemplateKey } from "@/app/_lib/email/template-keys";
 import { sendTestEmail } from "@/app/_lib/mailer";
 import { auth } from "@/app/_lib/auth";
 import { generateTestPdf } from "@/app/_lib/util/generate-invoice-pdf";
+import { sanitizeTemplateHtml } from "@/app/_lib/util/sanitize-html";
 
 export interface EmailTemplateInput {
   template_key: string;
@@ -34,18 +35,24 @@ export async function upsertEmailTemplateAction(input: EmailTemplateInput) {
     return { success: false, error: "Isi email harus diisi" };
   }
 
+  // Strip any executable content (scripts, event handlers, js: URLs) before
+  // persisting. The invoice template is rendered by a headless browser for the
+  // PDF, so injected script would run server-side; email bodies render in
+  // recipients' clients. {{variable}} placeholders pass through untouched.
+  const sanitizedBody = sanitizeTemplateHtml(input.body_html);
+
   try {
     await prisma.emailTemplate.upsert({
       where: { template_key: input.template_key },
       update: {
         subject: input.subject,
-        body_html: input.body_html,
+        body_html: sanitizedBody,
         is_enabled: input.is_enabled,
       },
       create: {
         template_key: input.template_key,
         subject: input.subject,
-        body_html: input.body_html,
+        body_html: sanitizedBody,
         is_enabled: input.is_enabled,
       },
     });
@@ -94,7 +101,7 @@ export async function sendTestEmailAction(
   if (!email) return { success: false, error: "Email pengguna tidak ditemukan" };
 
   try {
-    await sendTestEmail(email, subject, bodyHtml, templateKey);
+    await sendTestEmail(email, subject, sanitizeTemplateHtml(bodyHtml), templateKey);
     return { success: true, email };
   } catch (e: unknown) {
     console.error("sendTestEmail error:", e);
@@ -109,7 +116,7 @@ export async function generateTestPdfAction(bodyHtml: string) {
     return { success: false, error: "Tidak memiliki akses" } as const;
 
   try {
-    const pdf = await generateTestPdf(bodyHtml);
+    const pdf = await generateTestPdf(sanitizeTemplateHtml(bodyHtml));
     return { success: true, base64: pdf.toString("base64") } as const;
   } catch (e: unknown) {
     console.error("generateTestPdf error:", e);

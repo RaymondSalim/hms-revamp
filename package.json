@@ -51,6 +51,7 @@
     "driver.js": "^1.4.0",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.40.0",
+    "isomorphic-dompurify": "^3.18.0",
     "libphonenumber-js": "^1.13.6",
     "next": "16.2.7",
     "next-auth": "^5.0.0-beta.30",
