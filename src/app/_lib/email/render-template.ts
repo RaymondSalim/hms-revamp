@@ -52,3 +52,46 @@ export async function getTemplateOrDefault(
   }
   return { subject: row.subject, body_html: row.body_html };
 }
+
+/**
+ * Render an email body wrapped in the shared layout template.
+ * Resolves layout from DB (EMAIL_LAYOUT key) or falls back to built-in default.
+ * Injects company_name, company_logo_url, and the rendered content body.
+ */
+export async function renderEmailWithLayout(
+  bodyHtml: string,
+  vars: Record<string, string>
+): Promise<string> {
+  const layout = await getTemplateOrDefault("EMAIL_LAYOUT");
+
+  const companyName = await getCompanyNameForEmail();
+  const companyLogoUrl = await getCompanyLogoForEmail();
+
+  const renderedBody = renderTemplate(bodyHtml, vars, true);
+
+  const logoHtml = companyLogoUrl
+    ? `<img src="${escapeHtml(companyLogoUrl)}" alt="${escapeHtml(companyName)}" style="max-height:48px;margin-bottom:8px;">`
+    : "";
+
+  const layoutVars: Record<string, string> = {
+    content: renderedBody,
+    company_name: companyName,
+    company_logo_url: logoHtml,
+  };
+
+  return renderTemplate(layout.body_html, layoutVars, false);
+}
+
+async function getCompanyNameForEmail(): Promise<string> {
+  const row = await prisma.setting.findUnique({
+    where: { setting_key: "COMPANY_NAME" },
+  });
+  return row?.setting_value || "Perusahaan Anda";
+}
+
+async function getCompanyLogoForEmail(): Promise<string> {
+  const row = await prisma.setting.findUnique({
+    where: { setting_key: "COMPANY_IMAGE" },
+  });
+  return row?.setting_value || "";
+}

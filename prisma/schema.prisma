@@ -555,7 +555,7 @@ model Tenant {
 model EmailLogs {
   id      Int    @id @default(autoincrement())
   status  String @db.VarChar(255)
-  payload String @db.VarChar(4096)
+  payload String @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
