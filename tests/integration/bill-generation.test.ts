@@ -463,6 +463,46 @@ describe("Bill Generation", () => {
       expect(duplicateBill).toBeNull();
     });
 
+    it("creates no duplicate bill rows when monthly billing re-runs for the same period (idempotency regression)", async () => {
+      const { room, tenant } = await createBaseData();
+
+      const booking = await testPrisma.booking.create({
+        data: {
+          room_id: room.id,
+          start_date: new Date("2025-01-01"),
+          fee: 3000000,
+          tenant_id: tenant.id,
+          is_rolling: true,
+          end_date: null,
+        },
+      });
+
+      const bookingArg = {
+        id: booking.id,
+        start_date: new Date("2025-01-01"),
+        fee: 3000000,
+        second_resident_fee: null,
+        addOns: [],
+        is_rolling: true,
+        end_date: null,
+      };
+      const targetDate = new Date("2030-03-01");
+
+      // Simulate the cron firing three times for the same period (e.g. a
+      // platform retry after a timeout). Only the first run should persist a
+      // bill; the row count for that due date must never exceed one.
+      await generateNextMonthlyBill(bookingArg, targetDate);
+      await generateNextMonthlyBill(bookingArg, targetDate);
+      await generateNextMonthlyBill(bookingArg, targetDate);
+
+      const dueDate = new Date(Date.UTC(2030, 2, 31)); // last day of Mar 2030
+      const billsForPeriod = await testPrisma.bill.findMany({
+        where: { booking_id: booking.id, due_date: dueDate },
+      });
+
+      expect(billsForPeriod).toHaveLength(1);
+    });
+
     it("should not generate bill for non-rolling booking", async () => {
       const { room, tenant } = await createBaseData();
 
