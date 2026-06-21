@@ -4,6 +4,7 @@ import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 
 import { deleteBookingAction } from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
 import { deletePaymentAction } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
+import { simulateUnpaidBillPaymentAction } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { getBookingsByLocation, getBookingById } from "@/app/_db/bookings";
 import { getRecentPayments } from "@/app/_db/dashboard";
 import { getTransactionsByLocation } from "@/app/_db/transaction";
@@ -159,5 +160,24 @@ describe("Soft-delete excludes financial spine from reads", () => {
     });
     expect(rawTransaction).not.toBeNull();
     expect(rawTransaction!.deletedAt).not.toBeNull();
+  });
+
+  it("payment-allocation simulation ignores soft-deleted bills", async () => {
+    const { booking, bill } = await createFinancialBooking();
+
+    // With one unpaid 3,000,000 bill, a 3,000,000 payment fully allocates.
+    const before = await simulateUnpaidBillPaymentAction(booking.id, 3000000);
+    expect(before.some((a) => a.bill_id === bill.id)).toBe(true);
+
+    // Soft-delete the bill. The simulation must no longer consider it, so there
+    // is nothing left to allocate against.
+    await testPrisma.bill.update({
+      where: { id: bill.id },
+      data: { deletedAt: new Date() },
+    });
+
+    const after = await simulateUnpaidBillPaymentAction(booking.id, 3000000);
+    expect(after.some((a) => a.bill_id === bill.id)).toBe(false);
+    expect(after).toHaveLength(0);
   });
 });

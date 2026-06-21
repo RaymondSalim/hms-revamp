@@ -91,7 +91,11 @@ export async function upsertGuestStayAction(data: { id?: number; guest_id: numbe
   const segments = splitGuestStayByMonth(startDate, endDate, data.daily_fee);
 
   for (const segment of segments) {
-    // Find the matching bill for this month
+    // Find the matching bill for this month. Intentionally NOT filtered by
+    // deletedAt: we create the bill when none is found, and the
+    // @@unique([booking_id, due_date]) constraint ignores soft-delete — so a
+    // soft-deleted bill for this period must still be seen here to avoid a
+    // unique-constraint violation on insert.
     const dueDate = lastDayOfUtcMonth(new Date(Date.UTC(segment.year, segment.month, 1)));
     let bill = await prisma.bill.findFirst({
       where: { booking_id: guest.booking_id, due_date: dueDate },

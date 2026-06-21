@@ -28,7 +28,7 @@ export async function simulateUnpaidBillPaymentAction(
   }
 
   const bills = await prisma.bill.findMany({
-    where: { booking_id: bookingId },
+    where: { booking_id: bookingId, deletedAt: null },
     include: { bill_item: true, paymentBills: true },
     orderBy: { due_date: "asc" },
   });

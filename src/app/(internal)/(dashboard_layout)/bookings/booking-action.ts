@@ -266,7 +266,11 @@ export async function generateNextMonthlyBill(
   const targetYear = targetDate.getUTCFullYear();
   const dueDate = lastDayOfUtcMonth(targetDate);
 
-  // Check if bill already exists for this month (IDEMPOTENT)
+  // Check if bill already exists for this month (IDEMPOTENT).
+  // Intentionally NOT filtered by deletedAt: the @@unique([booking_id,
+  // due_date]) constraint ignores soft-delete, so a soft-deleted bill for this
+  // period still occupies the slot. Filtering it out here would let us attempt
+  // an insert that the DB then rejects with a unique-constraint violation.
   const existingBill = await prisma.bill.findFirst({
     where: {
       booking_id: booking.id,
