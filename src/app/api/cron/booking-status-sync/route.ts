@@ -1,6 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
-import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
 import { logAudit } from "@/app/_lib/audit";
 import {
   computeExpectedStatus,
@@ -8,6 +6,7 @@ import {
 } from "@/app/_lib/util/booking-status";
 import { ROOM_STATUS } from "@/app/_lib/util/status";
 import { businessToday } from "@/app/_lib/util/business-time";
+import { createCronHandler } from "@/app/_lib/util/cron-handler";
 
 export const maxDuration = 60;
 
@@ -72,20 +71,9 @@ export async function runBookingStatusSync() {
   return { success: true, stats: { updated, scanned: bookings.length } };
 }
 
-export async function GET(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const result = await runBookingStatusSync();
-  return NextResponse.json(result);
-}
-
-export async function POST(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const result = await runBookingStatusSync();
-  return NextResponse.json(result);
-}
+const handler = createCronHandler(
+  "booking-status-sync",
+  runBookingStatusSync
+);
+export const GET = handler;
+export const POST = handler;

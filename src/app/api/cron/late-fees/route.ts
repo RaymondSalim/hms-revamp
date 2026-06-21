@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
 import { addDays, isAfter } from "date-fns";
 import { prisma } from "@/app/_lib/prisma";
-import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
 import { logAudit } from "@/app/_lib/audit";
 import {
   resolveBillingPolicy,
   computeLateFee,
 } from "@/app/_lib/util/billing-policy";
 import { businessToday } from "@/app/_lib/util/business-time";
+import { createCronHandler } from "@/app/_lib/util/cron-handler";
 
 export const maxDuration = 60;
 
@@ -108,20 +107,6 @@ export async function runLateFees(today?: Date) {
   return { success: true, stats: { created, scanned: bills.length } };
 }
 
-export async function GET(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const result = await runLateFees();
-  return NextResponse.json(result);
-}
-
-export async function POST(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const result = await runLateFees();
-  return NextResponse.json(result);
-}
+const handler = createCronHandler("late-fees", () => runLateFees());
+export const GET = handler;
+export const POST = handler;

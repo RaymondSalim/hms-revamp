@@ -9,6 +9,7 @@ import { sendTestEmail } from "@/app/_lib/mailer";
 import { auth } from "@/app/_lib/auth";
 import { generateTestPdf } from "@/app/_lib/util/generate-invoice-pdf";
 import { sanitizeTemplateHtml } from "@/app/_lib/util/sanitize-html";
+import { captureException } from "@/app/_lib/logger";
 
 export interface EmailTemplateInput {
   template_key: string;
@@ -61,7 +62,7 @@ export async function upsertEmailTemplateAction(input: EmailTemplateInput) {
     revalidatePath("/settings/email-templates");
     return { success: true };
   } catch (e: unknown) {
-    console.error("Email template upsert error:", e);
+    captureException(e, { message: "Email template upsert error", template_key: input.template_key });
     return { success: false, error: "Gagal menyimpan template email" };
   }
 }
@@ -83,7 +84,7 @@ export async function saveInvoiceFilenameAction(pattern: string) {
     await logAudit(`setting.upsert: INVOICE_PDF_FILENAME`);
     return { success: true };
   } catch (e: unknown) {
-    console.error("Save invoice filename error:", e);
+    captureException(e, { message: "Save invoice filename error" });
     return { success: false, error: "Gagal menyimpan nama file" };
   }
 }
@@ -104,7 +105,7 @@ export async function sendTestEmailAction(
     await sendTestEmail(email, subject, sanitizeTemplateHtml(bodyHtml), templateKey);
     return { success: true, email };
   } catch (e: unknown) {
-    console.error("sendTestEmail error:", e);
+    captureException(e, { message: "sendTestEmail error", templateKey });
     const message = e instanceof Error ? e.message : "Unknown error";
     return { success: false, error: `Gagal mengirim email test: ${message}` };
   }
@@ -119,7 +120,7 @@ export async function generateTestPdfAction(bodyHtml: string) {
     const pdf = await generateTestPdf(sanitizeTemplateHtml(bodyHtml));
     return { success: true, base64: pdf.toString("base64") } as const;
   } catch (e: unknown) {
-    console.error("generateTestPdf error:", e);
+    captureException(e, { message: "generateTestPdf error" });
     const message = e instanceof Error ? e.message : "Unknown error";
     return { success: false, error: `Gagal generate PDF: ${message}` } as const;
   }

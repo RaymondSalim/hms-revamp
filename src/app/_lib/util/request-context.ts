@@ -7,8 +7,8 @@ interface RequestContext {
 
 const asyncLocalStorage = new AsyncLocalStorage<RequestContext>();
 
-export function withRequestId<T>(fn: () => T): T {
-  return asyncLocalStorage.run({ requestId: randomUUID() }, fn);
+export function withRequestId<T>(fn: () => T, requestId?: string): T {
+  return asyncLocalStorage.run({ requestId: requestId || randomUUID() }, fn);
 }
 
 export function withAction<T>(fn: () => T): T {

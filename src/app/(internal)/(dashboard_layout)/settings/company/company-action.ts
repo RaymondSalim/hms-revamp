@@ -5,6 +5,7 @@ import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
 import { upsertSetting } from "@/app/_db/settings";
 import { validateImageDataUrl } from "@/app/_lib/util/image-data-url";
+import { captureException } from "@/app/_lib/logger";
 
 export interface CompanySettingsInput {
   companyName: string;
@@ -43,7 +44,7 @@ export async function updateCompanySettingsAction(input: CompanySettingsInput) {
     revalidatePath("/", "layout");
     return { success: true as const };
   } catch (e: unknown) {
-    console.error("Company settings update error:", e);
+    captureException(e, { message: "Company settings update error" });
     return { success: false as const, error: "Gagal menyimpan pengaturan" };
   }
 }
