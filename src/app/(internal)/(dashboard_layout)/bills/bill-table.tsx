@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import {
@@ -51,6 +51,13 @@ interface BillRow {
 
 interface Props {
   bills: BillRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
 }
 
 // --- Helpers ---
@@ -84,7 +91,16 @@ function formatDate(dateStr: string | null) {
 
 // --- Main Component ---
 
-export function BillTable({ bills }: Props) {
+export function BillTable({
+  bills,
+  total,
+  page,
+  pageSize,
+  pageCount,
+  search,
+  sortBy,
+  sortDir,
+}: Props) {
   const [expandedBillId, setExpandedBillId] = useState<number | null>(null);
   const [editBillModal, setEditBillModal] = useState<BillRow | null>(null);
   const [editItemModal, setEditItemModal] = useState<BillItemRow | null>(null);
@@ -392,9 +408,17 @@ export function BillTable({ bills }: Props) {
         </button>
       </div>
 
-      <DataTable
+      <ServerDataTable
         columns={columns}
         data={bills}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["due_date", "description", "invoice_number"]}
         searchPlaceholder="Cari tagihan..."
       />
 

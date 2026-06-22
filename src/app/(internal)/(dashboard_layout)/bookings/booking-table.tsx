@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import {
@@ -101,6 +101,13 @@ interface Props {
   addons: AddonOption[];
   roomTypeDurations: RoomTypeDurationOption[];
   bookingStatuses: BookingStatusOption[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -144,6 +151,13 @@ export function BookingTable({
   addons,
   roomTypeDurations,
   bookingStatuses,
+  total,
+  page,
+  pageSize,
+  pageCount,
+  search,
+  sortBy,
+  sortDir,
 }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<BookingRow | null>(null);
@@ -323,9 +337,17 @@ export function BookingTable({
         </button>
       </div>
 
-      <DataTable
+      <ServerDataTable
         columns={columns}
         data={bookings}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["start_date", "end_date", "fee"]}
         searchPlaceholder="Cari pemesanan..."
       />
 
