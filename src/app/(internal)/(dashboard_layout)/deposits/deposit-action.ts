@@ -68,7 +68,7 @@ export async function updateDepositStatusAction(data: {
   if (data.status === "APPLIED") {
     // Create a credit bill item on the latest bill to offset the deposit
     const latestBill = await prisma.bill.findFirst({
-      where: { booking_id: deposit.booking.id },
+      where: { booking_id: deposit.booking.id, deletedAt: null },
       orderBy: { due_date: "desc" },
     });
 

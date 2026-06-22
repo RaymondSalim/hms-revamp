@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/app/_lib/prisma";
 import {
   getTemplateOrDefault,
@@ -9,6 +10,24 @@ import {
   generateInvoicePdf,
   getInvoiceFilename,
 } from "@/app/_lib/util/generate-invoice-pdf";
+
+/**
+ * The bill shape sendBillReminderEmail needs: line items, payment allocations,
+ * and the booking with its tenant + room + location. Both callers (the resend
+ * action and the reminder cron) load exactly these relations, so deriving the
+ * type from the query keeps the function honest if the schema changes.
+ */
+const billReminderArgs = {
+  include: {
+    bill_item: true,
+    paymentBills: true,
+    bookings: {
+      include: { tenants: true, rooms: { include: { locations: true } } },
+    },
+  },
+} satisfies Prisma.BillDefaultArgs;
+
+export type BillReminderInput = Prisma.BillGetPayload<typeof billReminderArgs>;
 
 const transporter =
   process.env.NODE_ENV === "production"
@@ -35,24 +54,18 @@ async function getCompanyName(): Promise<string> {
   return row?.setting_value || "Perusahaan Anda";
 }
 
-export async function sendBillReminderEmail(bill: any) {
+export async function sendBillReminderEmail(bill: BillReminderInput) {
   const tenant = bill.bookings.tenants;
   const room = bill.bookings.rooms;
   const location = room?.locations ?? null;
-  const total = bill.bill_item.reduce(
-    (s: number, i: any) => s + Number(i.amount),
-    0,
-  );
-  const paid = bill.paymentBills.reduce(
-    (s: number, p: any) => s + Number(p.amount),
-    0,
-  );
+  const total = bill.bill_item.reduce((s, i) => s + Number(i.amount), 0);
+  const paid = bill.paymentBills.reduce((s, p) => s + Number(p.amount), 0);
   const outstanding = total - paid;
 
   const template = await getTemplateOrDefault("BILL_REMINDER");
   const vars: Record<string, string> = {
-    tenant_name: tenant.name,
-    room_number: String(room.room_number),
+    tenant_name: tenant?.name ?? "",
+    room_number: room ? String(room.room_number) : "",
     bill_description: bill.description,
     outstanding: outstanding.toLocaleString("id-ID"),
     due_date: bill.due_date.toLocaleDateString("id-ID"),
@@ -64,15 +77,22 @@ export async function sendBillReminderEmail(bill: any) {
     invoice_number: bill.invoice_number ?? null,
     description: bill.description,
     due_date: bill.due_date,
-    bill_item: bill.bill_item.map((i: any) => ({
+    bill_item: bill.bill_item.map((i) => ({
       description: i.description,
       amount: i.amount,
     })),
-    paymentBills: bill.paymentBills.map((p: any) => ({ amount: p.amount })),
+    paymentBills: bill.paymentBills.map((p) => ({ amount: p.amount })),
     tenant,
     room,
     location,
   };
+
+  // Callers already verify the tenant has an email before invoking this, but
+  // narrow it here so the type system agrees and we fail loudly otherwise.
+  const recipient = tenant?.email;
+  if (!recipient) {
+    throw new Error("Cannot send bill reminder: tenant has no email address");
+  }
 
   const [pdf, invoiceFilename] = await Promise.all([
     generateInvoicePdf(pdfInput),
@@ -82,7 +102,7 @@ export async function sendBillReminderEmail(bill: any) {
   try {
     await transporter.sendMail({
       from: DEFAULT_FROM,
-      to: tenant.email,
+      to: recipient,
       subject,
       html,
       attachments: [
@@ -96,25 +116,39 @@ export async function sendBillReminderEmail(bill: any) {
     await prisma.emailLogs.create({
       data: {
         from: DEFAULT_FROM,
-        to: tenant.email,
+        to: recipient,
         subject,
         status: "SUCCESS",
         payload: html,
       },
     });
-  } catch (e: any) {
-    const status = e.responseCode ? "FAIL_SERVER" : "FAIL_CLIENT";
+  } catch (e) {
+    const status = isSmtpServerError(e) ? "FAIL_SERVER" : "FAIL_CLIENT";
     await prisma.emailLogs.create({
       data: {
         from: DEFAULT_FROM,
-        to: tenant.email,
+        to: recipient,
         subject,
         status,
-        payload: e.message,
+        payload: e instanceof Error ? e.message : String(e),
       },
     });
     throw e;
   }
+}
+
+/**
+ * Nodemailer surfaces an SMTP server rejection as an error carrying a numeric
+ * `responseCode`. Treat that as a server-side failure; anything else (e.g. a
+ * connection/DNS error before the server replied) is a client-side failure.
+ */
+function isSmtpServerError(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "responseCode" in e &&
+    typeof (e as { responseCode: unknown }).responseCode === "number"
+  );
 }
 
 export async function sendPasswordResetEmail(email: string, resetLink: string) {
@@ -140,15 +174,15 @@ export async function sendPasswordResetEmail(email: string, resetLink: string) {
         payload: html,
       },
     });
-  } catch (e: any) {
-    const status = e.responseCode ? "FAIL_SERVER" : "FAIL_CLIENT";
+  } catch (e) {
+    const status = isSmtpServerError(e) ? "FAIL_SERVER" : "FAIL_CLIENT";
     await prisma.emailLogs.create({
       data: {
         from: DEFAULT_FROM,
         to: email,
         subject,
         status,
-        payload: e.message,
+        payload: e instanceof Error ? e.message : String(e),
       },
     });
   }

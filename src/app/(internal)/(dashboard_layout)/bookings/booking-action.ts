@@ -22,6 +22,7 @@ import {
 import { checkPermission } from "@/app/_lib/rbac";
 import { getScopedLocationIds } from "@/app/_lib/util/location-scope";
 import { logAudit } from "@/app/_lib/audit";
+import { captureException } from "@/app/_lib/logger";
 import { generatePaymentBillMappingFromPaymentsAndBills } from "@/app/_lib/util/payment-allocation";
 import { createOrUpdatePaymentTransactions } from "@/app/(internal)/(dashboard_layout)/payments/payment-action";
 import { computeExpectedStatus } from "@/app/_lib/util/booking-status";
@@ -265,7 +266,11 @@ export async function generateNextMonthlyBill(
   const targetYear = targetDate.getUTCFullYear();
   const dueDate = lastDayOfUtcMonth(targetDate);
 
-  // Check if bill already exists for this month (IDEMPOTENT)
+  // Check if bill already exists for this month (IDEMPOTENT).
+  // Intentionally NOT filtered by deletedAt: the @@unique([booking_id,
+  // due_date]) constraint ignores soft-delete, so a soft-deleted bill for this
+  // period still occupies the slot. Filtering it out here would let us attempt
+  // an insert that the DB then rejects with a unique-constraint violation.
   const existingBill = await prisma.bill.findFirst({
     where: {
       booking_id: booking.id,
@@ -682,7 +687,7 @@ export async function upsertBookingAction(data: {
     revalidatePath("/bookings");
     return { success: true };
   } catch (e: unknown) {
-    console.error("Booking upsert error:", e);
+    captureException(e, { message: "Booking upsert error" });
     return { success: false, error: "Gagal menyimpan pemesanan" };
   }
 }
@@ -836,7 +841,7 @@ export async function scheduleEndOfStayAction(
     revalidatePath("/bookings");
     return { success: true };
   } catch (e: unknown) {
-    console.error("Schedule end error:", e);
+    captureException(e, { message: "Schedule end error" });
     return { success: false, error: "Gagal menjadwalkan akhir penghunian" };
   }
 }
@@ -976,7 +981,7 @@ export async function checkInOutAction(data: {
     revalidatePath("/bookings");
     return { success: true };
   } catch (e: unknown) {
-    console.error("Check in/out error:", e);
+    captureException(e, { message: "Check in/out error" });
     return { success: false, error: "Gagal mencatat check-in/out" };
   }
 }
@@ -1046,7 +1051,7 @@ export async function deleteBookingAction(id: number) {
     await logAudit(`booking.deleted: id=${id}`);
     return { success: true };
   } catch (e: unknown) {
-    console.error("Delete booking error:", e);
+    captureException(e, { message: "Delete booking error" });
     return { success: false, error: "Gagal menghapus pemesanan" };
   }
 }

@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { generateNextMonthlyBill } from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
-import { verifyCronSecret } from "@/app/_lib/util/cron-auth";
 import { businessToday } from "@/app/_lib/util/business-time";
 import { BOOKING_STATUS } from "@/app/_lib/util/status";
+import { createCronHandler } from "@/app/_lib/util/cron-handler";
 
 export const maxDuration = 60;
 
@@ -48,20 +47,6 @@ async function runMonthlyBilling() {
   return { success: true, results };
 }
 
-export async function GET(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const result = await runMonthlyBilling();
-  return NextResponse.json(result);
-}
-
-export async function POST(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const result = await runMonthlyBilling();
-  return NextResponse.json(result);
-}
+const handler = createCronHandler("monthly-billing", runMonthlyBilling);
+export const GET = handler;
+export const POST = handler;

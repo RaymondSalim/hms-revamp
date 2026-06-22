@@ -73,7 +73,7 @@ export async function createMeterReadingAction(data: {
 
     // Attach to the booking's CURRENT bill: latest bill by due_date.
     const latestBill = await prisma.bill.findFirst({
-      where: { booking_id: data.booking_id },
+      where: { booking_id: data.booking_id, deletedAt: null },
       orderBy: { due_date: "desc" },
     });
 

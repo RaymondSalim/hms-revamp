@@ -4,6 +4,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { checkPermission } from "@/app/_lib/rbac";
 import { logAudit } from "@/app/_lib/audit";
+import { captureException } from "@/app/_lib/logger";
 
 export interface BillingPolicyScope {
   // null location_id + null booking_id = system default; location_id set = location override
@@ -60,7 +61,7 @@ export async function upsertBillingPolicyAction(scope: BillingPolicyScope) {
     revalidatePath("/settings/billing");
     return { success: true };
   } catch (e: unknown) {
-    console.error("Billing policy upsert error:", e);
+    captureException(e, { message: "Billing policy upsert error" });
     return { success: false, error: "Gagal menyimpan kebijakan tagihan" };
   }
 }
