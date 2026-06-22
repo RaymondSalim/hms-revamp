@@ -6,7 +6,7 @@ import {
   generateBillsForFixedBooking,
   generateInitialBillsForRollingBooking,
   generateNextMonthlyBill,
-} from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
+} from "@/app/_lib/services/bill-generation";
 
 describe("Bill Generation", () => {
   beforeEach(async () => {
