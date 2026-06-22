@@ -27,6 +27,26 @@ async function truncateAll(): Promise<void> {
   }
 }
 
+/**
+ * Mark the app as already set up. The base seed leaves APP_SETUP = "false",
+ * which makes the dashboard layout redirect every authenticated route to the
+ * first-time-setup wizard. E2E exercises a configured instance, so flip it on.
+ */
+async function markAppConfigured(): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: { db: { url: E2E_DATABASE_URL } },
+  });
+  try {
+    await prisma.setting.upsert({
+      where: { setting_key: "APP_SETUP" },
+      update: { setting_value: "true" },
+      create: { setting_key: "APP_SETUP", setting_value: "true" },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 export default async function globalSetup(): Promise<void> {
   const env = { ...process.env, DATABASE_URL: E2E_DATABASE_URL };
 
@@ -42,4 +62,7 @@ export default async function globalSetup(): Promise<void> {
   // 3. Seed base data (admin user, RBAC, settings) then mock data.
   execSync("npx tsx prisma/seed.ts", { env, stdio: "inherit" });
   execSync("npx tsx prisma/seed-mock.ts", { env, stdio: "inherit" });
+
+  // 4. Treat the instance as already configured (skip the setup wizard).
+  await markAppConfigured();
 }
