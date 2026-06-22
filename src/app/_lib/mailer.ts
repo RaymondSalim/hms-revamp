@@ -188,6 +188,36 @@ export async function sendPasswordResetEmail(email: string, resetLink: string) {
   }
 }
 
+/**
+ * Re-send an already-rendered email verbatim. Used by the email-logs "resend"
+ * action: the stored payload is the exact HTML that was delivered, so we send
+ * it as-is rather than re-rendering the source template (which may have changed,
+ * and whose source record we no longer have a link to). No attachment is
+ * reproduced — the original PDF isn't recoverable from a log row. The attempt
+ * is logged like any other send.
+ */
+export async function resendStoredEmail(to: string, subject: string | null, html: string) {
+  const finalSubject = subject ?? "";
+  try {
+    await transporter.sendMail({ from: DEFAULT_FROM, to, subject: finalSubject, html });
+    await prisma.emailLogs.create({
+      data: { from: DEFAULT_FROM, to, subject: finalSubject, status: "SUCCESS", payload: html },
+    });
+  } catch (e) {
+    const status = isSmtpServerError(e) ? "FAIL_SERVER" : "FAIL_CLIENT";
+    await prisma.emailLogs.create({
+      data: {
+        from: DEFAULT_FROM,
+        to,
+        subject: finalSubject,
+        status,
+        payload: e instanceof Error ? e.message : String(e),
+      },
+    });
+    throw e;
+  }
+}
+
 const TEST_VARS: Record<string, string> = {
   tenant_name: "Budi Santoso",
   room_number: "A-201",
