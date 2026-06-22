@@ -1,20 +1,97 @@
 import { prisma } from "@/app/_lib/prisma";
+import { Prisma } from "@prisma/client";
 import type { LocationScope } from "@/app/_lib/util/location-scope";
 import { BOOKING_STATUS } from "@/app/_lib/util/status";
+import {
+  toSkipTake,
+  buildPaginated,
+  type TableParams,
+  type Paginated,
+} from "@/app/_lib/util/table-params";
+
+const bookingListInclude = {
+  rooms: { include: { roomtypes: true, locations: true } },
+  tenants: true,
+  durations: true,
+  bookingstatuses: true,
+  deposit: true,
+  bills: {
+    where: { deletedAt: null },
+    include: { bill_item: true, paymentBills: true },
+  },
+  payments: {
+    where: { deletedAt: null },
+    include: { paymentBills: true, paymentstatuses: true },
+  },
+  addOns: { include: { addOn: { include: { pricing: true } } } },
+  guests: { include: { GuestStay: true } },
+} satisfies Prisma.BookingInclude;
 
 export async function getBookingsByLocation(locationId: number) {
   return prisma.booking.findMany({
     where: { rooms: { location_id: locationId }, deletedAt: null },
-    include: {
-      rooms: { include: { roomtypes: true, locations: true } },
-      tenants: true, durations: true, bookingstatuses: true, deposit: true,
-      bills: { where: { deletedAt: null }, include: { bill_item: true, paymentBills: true } },
-      payments: { where: { deletedAt: null }, include: { paymentBills: true, paymentstatuses: true } },
-      addOns: { include: { addOn: { include: { pricing: true } } } },
-      guests: { include: { GuestStay: true } },
-    },
+    include: bookingListInclude,
     orderBy: { createdAt: "desc" },
   });
+}
+
+export type BookingListRow = Prisma.BookingGetPayload<{
+  include: typeof bookingListInclude;
+}>;
+
+/** DB-backed columns the bookings table may sort by. */
+export const BOOKING_SORT_KEYS = [
+  "start_date",
+  "end_date",
+  "fee",
+  "createdAt",
+] as const;
+
+/**
+ * Paginated, searchable, sortable bookings for one location. Search matches
+ * tenant name and room number (case-insensitive).
+ */
+export async function getBookingsPage(
+  locationId: number,
+  params: TableParams
+): Promise<Paginated<BookingListRow>> {
+  const search = params.search;
+  const where: Prisma.BookingWhereInput = {
+    rooms: { location_id: locationId },
+    deletedAt: null,
+    ...(search
+      ? {
+          OR: [
+            { tenants: { name: { contains: search, mode: "insensitive" } } },
+            {
+              rooms: {
+                room_number: { contains: search, mode: "insensitive" },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const sortKey = (params.sortBy ??
+    "createdAt") as (typeof BOOKING_SORT_KEYS)[number];
+  const orderBy: Prisma.BookingOrderByWithRelationInput = {
+    [sortKey]: params.sortDir,
+  };
+
+  const { skip, take } = toSkipTake(params);
+  const [rows, total] = await Promise.all([
+    prisma.booking.findMany({
+      where,
+      include: bookingListInclude,
+      orderBy,
+      skip,
+      take,
+    }),
+    prisma.booking.count({ where }),
+  ]);
+
+  return buildPaginated(rows, total, params);
 }
 
 export async function getBookingById(id: number, scope: LocationScope) {

@@ -1,6 +1,12 @@
 import { prisma } from "@/app/_lib/prisma";
-import { BillType } from "@prisma/client";
+import { BillType, Prisma } from "@prisma/client";
 import type { LocationScope } from "@/app/_lib/util/location-scope";
+import {
+  toSkipTake,
+  buildPaginated,
+  type TableParams,
+  type Paginated,
+} from "@/app/_lib/util/table-params";
 
 export async function getBillsByBooking(bookingId: number) {
   return prisma.bill.findMany({
@@ -8,6 +14,67 @@ export async function getBillsByBooking(bookingId: number) {
     include: { bill_item: true, paymentBills: true },
     orderBy: { due_date: "asc" },
   });
+}
+
+const billWithRelations = {
+  include: {
+    bill_item: true,
+    paymentBills: true,
+    bookings: { include: { tenants: true, rooms: true } },
+  },
+} satisfies Prisma.BillDefaultArgs;
+
+export type BillWithRelations = Prisma.BillGetPayload<typeof billWithRelations>;
+
+/** Columns that can be sorted at the DB level (relation-computed totals can't). */
+export const BILL_SORT_KEYS = ["due_date", "description", "invoice_number"] as const;
+
+/**
+ * Paginated, searchable, sortable bills for one location. Search matches
+ * invoice number, description, tenant name, and room number (case-insensitive).
+ */
+export async function getBillsPage(
+  locationId: number,
+  params: TableParams
+): Promise<Paginated<BillWithRelations>> {
+  const search = params.search;
+  const where: Prisma.BillWhereInput = {
+    deletedAt: null,
+    bookings: { rooms: { location_id: locationId } },
+    ...(search
+      ? {
+          OR: [
+            { invoice_number: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+            {
+              bookings: {
+                tenants: { name: { contains: search, mode: "insensitive" } },
+              },
+            },
+            {
+              bookings: {
+                rooms: {
+                  room_number: { contains: search, mode: "insensitive" },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const sortKey = (params.sortBy ?? "due_date") as (typeof BILL_SORT_KEYS)[number];
+  const orderBy: Prisma.BillOrderByWithRelationInput = {
+    [sortKey]: params.sortDir,
+  };
+
+  const { skip, take } = toSkipTake(params);
+  const [rows, total] = await Promise.all([
+    prisma.bill.findMany({ where, ...billWithRelations, orderBy, skip, take }),
+    prisma.bill.count({ where }),
+  ]);
+
+  return buildPaginated(rows, total, params);
 }
 
 export async function getBillById(id: number, scope: LocationScope) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { FileUpload } from "@/app/_components/file-upload";
 import { formatCurrency } from "@/app/_lib/util/currency";
@@ -55,6 +55,13 @@ interface Props {
   payments: PaymentRow[];
   paymentStatuses: PaymentStatusOption[];
   bookings: BookingOption[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
 }
 
 interface AllocationPreview {
@@ -96,7 +103,18 @@ function StatusBadge({ status }: { status: string }) {
 
 // --- Main Component ---
 
-export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
+export function PaymentTable({
+  payments,
+  paymentStatuses,
+  bookings,
+  total,
+  page,
+  pageSize,
+  pageCount,
+  search,
+  sortBy,
+  sortDir,
+}: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<PaymentRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<PaymentRow | null>(null);
@@ -382,9 +400,17 @@ export function PaymentTable({ payments, paymentStatuses, bookings }: Props) {
         </button>
       </div>
 
-      <DataTable
+      <ServerDataTable
         columns={columns}
         data={payments}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["payment_date", "amount"]}
         searchPlaceholder="Cari pembayaran..."
       />
 

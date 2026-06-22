@@ -4,8 +4,17 @@ import { resolveLocationContext } from "@/app/_lib/util/location-scope";
 import { PaymentTable } from "./payment-table";
 import { checkPermission } from "@/app/_lib/rbac";
 import { AccessDenied } from "@/app/_components/access-denied";
+import { getPaymentsPage, PAYMENT_SORT_KEYS } from "@/app/_db/payments";
+import {
+  parseTableParams,
+  type RawSearchParams,
+} from "@/app/_lib/util/table-params";
 
-export default async function PaymentsPage() {
+export default async function PaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
   const { authorized } = await checkPermission("payments.view");
   if (!authorized) return <AccessDenied />;
   const { selectedLocationId } = await resolveLocationContext();
@@ -20,30 +29,20 @@ export default async function PaymentsPage() {
     );
   }
 
-  const payments = await prisma.payment.findMany({
-    where: {
-      bookings: {
-        rooms: { location_id: selectedLocationId },
-      },
-      deletedAt: null,
-    },
-    include: {
-      bookings: {
-        include: {
-          tenants: true,
-          rooms: true,
-        },
-      },
-      paymentBills: true,
-      paymentstatuses: true,
-    },
-    orderBy: { payment_date: "desc" },
+  const params = parseTableParams(await searchParams, {
+    allowedSortKeys: PAYMENT_SORT_KEYS,
+    defaultSortBy: "payment_date",
+    defaultSortDir: "desc",
   });
+
+  const payments = await getPaymentsPage(selectedLocationId, params);
 
   const paymentStatuses = await prisma.paymentStatus.findMany({
     orderBy: { id: "asc" },
   });
 
+  // Booking list powers the "add payment" dropdown (form reference data), not
+  // the paginated table — load it in full.
   const bookings = await prisma.booking.findMany({
     where: { rooms: { location_id: selectedLocationId }, deletedAt: null },
     include: { tenants: true, rooms: true, bills: { where: { deletedAt: null }, include: { bill_item: true, paymentBills: true } } },
@@ -52,9 +51,16 @@ export default async function PaymentsPage() {
 
   return (
     <PaymentTable
-      payments={serializeForClient(payments) as never}
+      payments={serializeForClient(payments.rows) as never}
       paymentStatuses={serializeForClient(paymentStatuses) as never}
       bookings={serializeForClient(bookings) as never}
+      total={payments.total}
+      page={payments.page}
+      pageSize={payments.pageSize}
+      pageCount={payments.pageCount}
+      search={params.search}
+      sortBy={params.sortBy}
+      sortDir={params.sortDir}
     />
   );
 }

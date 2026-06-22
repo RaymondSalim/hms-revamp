@@ -1,4 +1,4 @@
-import { getBookingsByLocation } from "@/app/_db/bookings";
+import { getBookingsPage, BOOKING_SORT_KEYS } from "@/app/_db/bookings";
 import { getRoomsByLocation } from "@/app/_db/rooms";
 import { getTenants } from "@/app/_db/tenant";
 import { getDurations } from "@/app/_db/durations";
@@ -10,8 +10,16 @@ import { resolveLocationContext } from "@/app/_lib/util/location-scope";
 import { BookingTable } from "./booking-table";
 import { checkPermission } from "@/app/_lib/rbac";
 import { AccessDenied } from "@/app/_components/access-denied";
+import {
+  parseTableParams,
+  type RawSearchParams,
+} from "@/app/_lib/util/table-params";
 
-export default async function BookingsPage() {
+export default async function BookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
   const { authorized } = await checkPermission("bookings.view");
   if (!authorized) return <AccessDenied />;
   const { selectedLocationId } = await resolveLocationContext();
@@ -26,9 +34,15 @@ export default async function BookingsPage() {
     );
   }
 
+  const params = parseTableParams(await searchParams, {
+    allowedSortKeys: BOOKING_SORT_KEYS,
+    defaultSortBy: "createdAt",
+    defaultSortDir: "desc",
+  });
+
   const [bookings, rooms, tenants, durations, addons, roomTypeDurations, bookingStatuses] =
     await Promise.all([
-      getBookingsByLocation(selectedLocationId),
+      getBookingsPage(selectedLocationId, params),
       getRoomsByLocation(selectedLocationId),
       getTenants(),
       getDurations(),
@@ -39,13 +53,20 @@ export default async function BookingsPage() {
 
   return (
     <BookingTable
-      bookings={serializeForClient(bookings) as never}
+      bookings={serializeForClient(bookings.rows) as never}
       rooms={serializeForClient(rooms) as never}
       tenants={serializeForClient(tenants) as never}
       durations={serializeForClient(durations) as never}
       addons={serializeForClient(addons) as never}
       roomTypeDurations={serializeForClient(roomTypeDurations) as never}
       bookingStatuses={serializeForClient(bookingStatuses) as never}
+      total={bookings.total}
+      page={bookings.page}
+      pageSize={bookings.pageSize}
+      pageCount={bookings.pageCount}
+      search={params.search}
+      sortBy={params.sortBy}
+      sortDir={params.sortDir}
     />
   );
 }
