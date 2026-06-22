@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Serif_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/app/_components/toast-provider";
+import { ConfirmProvider } from "@/app/_components/confirm-dialog";
 
 const dmSerif = DM_Serif_Display({
   subsets: ["latin"],
@@ -30,7 +31,7 @@ export default function RootLayout({
       className={`${dmSerif.variable} ${plusJakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <ConfirmProvider>{children}</ConfirmProvider>
         <ToastProvider />
       </body>
     </html>

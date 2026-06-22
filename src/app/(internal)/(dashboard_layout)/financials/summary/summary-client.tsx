@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { businessToday } from "@/app/_lib/util/business-time";
+import { SkeletonCard } from "@/app/_components/skeleton";
 import {
   BarChart,
   Bar,
@@ -295,22 +296,24 @@ export function SummaryClient({ initialData, locationId }: SummaryClientProps) {
         </label>
       </div>
 
-      {loading && (
-        <div className="text-center py-4" style={{ color: "var(--color-text-secondary)" }}>
-          Memuat data...
+      {/* Summary Cards */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} lines={2} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SummaryCard label="Total Pemasukan" value={totalIncome} color="#16A34A" />
+          <SummaryCard label="Total Pengeluaran" value={totalExpense} color="#DC2626" />
+          <SummaryCard
+            label="Laba Bersih"
+            value={net}
+            color={net >= 0 ? "#16A34A" : "#DC2626"}
+          />
         </div>
       )}
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard label="Total Pemasukan" value={totalIncome} color="#16A34A" />
-        <SummaryCard label="Total Pengeluaran" value={totalExpense} color="#DC2626" />
-        <SummaryCard
-          label="Laba Bersih"
-          value={net}
-          color={net >= 0 ? "#16A34A" : "#DC2626"}
-        />
-      </div>
 
       {/* Chart */}
       {chartData.length > 0 && (

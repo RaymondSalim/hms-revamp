@@ -7,6 +7,7 @@ import { Modal } from "@/app/_components/modal";
 import { TenantForm } from "./tenant-form";
 import { deleteTenantAction } from "./tenant-action";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { useConfirm } from "@/app/_components/confirm-dialog";
 import { toast } from "react-toastify";
 
 export interface TenantRow {
@@ -32,6 +33,7 @@ export interface TenantRow {
 export function TenantTable({ data }: { data: TenantRow[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantRow | null>(null);
+  const confirm = useConfirm();
 
   const handleEdit = (tenant: TenantRow) => {
     setEditingTenant(tenant);
@@ -39,7 +41,7 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Yakin ingin menghapus penghuni ini?")) return;
+    if (!(await confirm({ message: "Yakin ingin menghapus penghuni ini?", danger: true }))) return;
     const result = await deleteTenantAction(id);
     if (result.success) {
       toast.success("Penghuni berhasil dihapus");

@@ -7,6 +7,7 @@ import { Modal } from "@/app/_components/modal";
 import { GuestForm } from "./guest-form";
 import { deleteGuestAction, deleteGuestStayAction } from "./guest-action";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { useConfirm } from "@/app/_components/confirm-dialog";
 import { toast } from "react-toastify";
 import { formatCurrency } from "@/app/_lib/util/currency";
 
@@ -42,6 +43,7 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<GuestRow | null>(null);
   const [detailGuest, setDetailGuest] = useState<GuestRow | null>(null);
+  const confirm = useConfirm();
 
   const handleEdit = (guest: GuestRow) => {
     setEditingGuest(guest);
@@ -49,7 +51,7 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Yakin ingin menghapus tamu ini?")) return;
+    if (!(await confirm({ message: "Yakin ingin menghapus tamu ini?", danger: true }))) return;
     const result = await deleteGuestAction(id);
     if (result.success) {
       toast.success("Tamu berhasil dihapus");
@@ -59,7 +61,7 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
   };
 
   const handleDeleteStay = async (stayId: number) => {
-    if (!confirm("Yakin ingin menghapus masa tinggal ini?")) return;
+    if (!(await confirm({ message: "Yakin ingin menghapus masa tinggal ini?", danger: true }))) return;
     const result = await deleteGuestStayAction(stayId);
     if (result.success) {
       toast.success("Masa tinggal berhasil dihapus");
