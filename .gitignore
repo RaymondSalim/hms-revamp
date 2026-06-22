@@ -179,3 +179,8 @@ next-env.d.ts
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij+all,nextjs
 
+
+# playwright e2e
+/playwright-report/
+/test-results/
+/e2e/.auth/
