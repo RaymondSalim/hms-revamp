@@ -1,5 +1,5 @@
 import { prisma } from "@/app/_lib/prisma";
-import { generateNextMonthlyBill } from "@/app/(internal)/(dashboard_layout)/bookings/booking-action";
+import { generateNextMonthlyBill } from "@/app/_lib/services/bill-generation";
 import { businessToday } from "@/app/_lib/util/business-time";
 import { BOOKING_STATUS } from "@/app/_lib/util/status";
 import { createCronHandler } from "@/app/_lib/util/cron-handler";
