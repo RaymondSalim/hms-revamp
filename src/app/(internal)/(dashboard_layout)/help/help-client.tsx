@@ -95,6 +95,8 @@ const sections: HelpSection[] = [
       "Template Email — Layout: template 'Layout Email' membungkus semua email keluar. Edit layout untuk mengubah header, footer, dan warna yang berlaku di semua jenis email.",
       "Invoice PDF: template 'Invoice PDF' mengatur tampilan invoice yang dilampirkan ke email tagihan dan bisa diunduh dari halaman tagihan. Edit HTML untuk mengubah desain invoice. Gunakan 'Download Test PDF' untuk melihat hasil.",
       "Invoice PDF — Nama File: atur pola nama file (misal: invoice-{{invoice_number}}) yang digunakan saat mengunduh atau melampirkan PDF.",
+      "Log Email: lihat riwayat semua email yang dikirim sistem (pengingat tagihan, reset password, email test). Saring berdasarkan status Berhasil/Gagal, cari berdasarkan penerima atau subjek, dan klik 'Detail' untuk melihat konten email yang dikirim atau pesan kesalahan.",
+      "Log Email — Kirim Ulang: untuk email yang berhasil terkirim, gunakan 'Kirim Ulang' untuk mengirim konten yang sama persis ke penerima yang sama. Catatan: lampiran PDF tidak disertakan saat kirim ulang.",
     ],
   },
   {

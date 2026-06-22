@@ -191,6 +191,12 @@ const navSections: NavSection[] = [
         icon: <RolesIcon />,
         permission: "roles.manage",
       },
+      {
+        label: "Log Email",
+        href: "/settings/email-logs",
+        icon: <EmailLogsIcon />,
+        permission: "roles.manage",
+      },
     ],
   },
   {
@@ -546,6 +552,15 @@ function CompanyIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v14a1 1 0 01-1 1h-3v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3H5a1 1 0 01-1-1V4zm3 1h2v2H7V5zm0 4h2v2H7V9zm4-4h2v2h-2V5zm0 4h2v2h-2V9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function EmailLogsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
     </svg>
   );
 }

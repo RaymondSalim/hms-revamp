@@ -1611,49 +1611,73 @@ async function main() {
   // Email Logs (sample sent emails)
   // ═══════════════════════════════════════════════════════
 
+  // Status/payload mirror what the live mailer writes (see _lib/mailer.ts):
+  // SUCCESS rows store the rendered HTML body; failures use FAIL_SERVER /
+  // FAIL_CLIENT and store the error message.
+  const sampleEmailHtml = (heading: string, body: string) =>
+    `<!DOCTYPE html><html><body style="font-family:sans-serif;color:#1e293b;padding:24px;">` +
+    `<h2 style="color:#c2410c;">${heading}</h2>${body}` +
+    `<p style="margin-top:24px;color:#64748b;font-size:13px;">Email ini dikirim otomatis oleh MICASA Suites.</p>` +
+    `</body></html>`;
+
   await prisma.emailLogs.createMany({
     data: [
       {
-        from: "noreply@micasasuites.com",
+        from: '"MICASA Suites" <noreply@micasasuites.com>',
         to: "ahmad.wijaya@gmail.com",
         subject: "Pengingat Pembayaran - Juni 2026",
-        status: "SENT",
-        payload: JSON.stringify({ template: "invoice_reminder", tenant: "Ahmad Wijaya", amount: 4250000 }),
+        status: "SUCCESS",
+        payload: sampleEmailHtml(
+          "Pengingat Pembayaran",
+          "<p>Yth. Ahmad Wijaya,</p><p>Tagihan sewa Anda untuk Juni 2026 sebesar <strong>Rp4.250.000</strong> akan segera jatuh tempo.</p>"
+        ),
       },
       {
-        from: "noreply@micasasuites.com",
+        from: '"MICASA Suites" <noreply@micasasuites.com>',
         to: "diana.putri@yahoo.com",
         subject: "Pengingat Pembayaran - Mei 2026",
-        status: "SENT",
-        payload: JSON.stringify({ template: "invoice_reminder", tenant: "Diana Putri", amount: 4500000 }),
+        status: "SUCCESS",
+        payload: sampleEmailHtml(
+          "Pengingat Pembayaran",
+          "<p>Yth. Diana Putri,</p><p>Tagihan sewa Anda untuk Mei 2026 sebesar <strong>Rp4.500.000</strong> akan segera jatuh tempo.</p>"
+        ),
       },
       {
-        from: "noreply@micasasuites.com",
+        from: '"MICASA Suites" <noreply@micasasuites.com>',
         to: "reza.f@outlook.com",
         subject: "Konfirmasi Pembayaran - INV/SDK/2026-04/0003",
-        status: "SENT",
-        payload: JSON.stringify({ template: "payment_confirmation", tenant: "Reza Firmansyah", amount: 6000000 }),
+        status: "SUCCESS",
+        payload: sampleEmailHtml(
+          "Konfirmasi Pembayaran",
+          "<p>Yth. Reza Firmansyah,</p><p>Pembayaran Anda sebesar <strong>Rp6.000.000</strong> telah kami terima. Terima kasih.</p>"
+        ),
       },
       {
-        from: "noreply@micasasuites.com",
+        from: '"MICASA Suites" <noreply@micasasuites.com>',
         to: "kevin.h@gmail.com",
         subject: "Selamat Datang di Mi Casa Suites!",
-        status: "SENT",
-        payload: JSON.stringify({ template: "welcome_tenant", tenant: "Kevin Hartanto", room: "301" }),
+        status: "SUCCESS",
+        payload: sampleEmailHtml(
+          "Selamat Datang!",
+          "<p>Yth. Kevin Hartanto,</p><p>Selamat datang di Mi Casa Suites. Anda telah ditempatkan di Kamar 301.</p>"
+        ),
       },
       {
-        from: "noreply@micasasuites.com",
+        from: '"MICASA Suites" <noreply@micasasuites.com>',
         to: "maya.sari@gmail.com",
         subject: "Pemberitahuan Keterlambatan Pembayaran",
-        status: "SENT",
-        payload: JSON.stringify({ template: "late_payment_notice", tenant: "Maya Sari", month: "April 2026" }),
+        status: "SUCCESS",
+        payload: sampleEmailHtml(
+          "Keterlambatan Pembayaran",
+          "<p>Yth. Maya Sari,</p><p>Tagihan Anda untuk April 2026 telah melewati jatuh tempo. Mohon segera melakukan pembayaran.</p>"
+        ),
       },
       {
-        from: "noreply@micasasuites.com",
+        from: '"MICASA Suites" <noreply@micasasuites.com>',
         to: "invalid@nonexistent.xyz",
         subject: "Pengingat Pembayaran - April 2026",
-        status: "FAILED",
-        payload: JSON.stringify({ template: "invoice_reminder", error: "Mailbox not found" }),
+        status: "FAIL_SERVER",
+        payload: "550 5.1.1 Recipient address rejected: Mailbox not found",
       },
     ],
   });
