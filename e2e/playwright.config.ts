@@ -6,7 +6,10 @@ const BASE_URL = `http://localhost:${PORT}`;
 const E2E_DATABASE_URL = "postgresql://e2e:e2e@localhost:5434/hms_e2e";
 
 export default defineConfig({
-  testDir: "./specs",
+  // Discover from the e2e root so the setup file (auth.setup.ts) and the specs
+  // (specs/*.spec.ts) are both collected. The chromium project's default
+  // testMatch only picks up *.spec.ts, so it ignores the setup file.
+  testDir: ".",
   globalSetup: "./global-setup.ts",
   // next dev compiles routes on first hit; keep timeouts generous.
   timeout: 60_000,
@@ -30,6 +33,9 @@ export default defineConfig({
   webServer: {
     command: `next dev -p ${PORT}`,
     url: BASE_URL,
+    // webServer.cwd defaults to this config file's dir (e2e/); the Next app
+    // lives at the repo root, one level up.
+    cwd: "..",
     reuseExistingServer: true,
     timeout: 120_000,
     env: {
