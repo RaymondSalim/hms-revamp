@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/app/_components/modal";
 import { SearchableSelect } from "@/app/_components/searchable-select";
+import { useConfirm } from "@/app/_components/confirm-dialog";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import { toast } from "react-toastify";
 import {
@@ -59,6 +60,7 @@ type SortDir = "asc" | "desc";
 
 export function UtilityTable({ readings, bookings }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [sortKey, setSortKey] = useState<SortKey>("reading_date");
@@ -140,8 +142,8 @@ export function UtilityTable({ readings, bookings }: Props) {
     });
   }
 
-  function handleDelete(id: number) {
-    if (!confirm("Hapus pembacaan ini dan tagihan terkait?")) return;
+  async function handleDelete(id: number) {
+    if (!(await confirm({ message: "Hapus pembacaan ini dan tagihan terkait?", danger: true }))) return;
     startTransition(async () => {
       const result = await deleteMeterReadingAction(id);
       if (result.success) {

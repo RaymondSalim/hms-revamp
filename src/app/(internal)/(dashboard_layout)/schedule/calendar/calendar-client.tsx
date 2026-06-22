@@ -8,6 +8,7 @@ import interactionPlugin, { type DateClickArg } from "@fullcalendar/interaction"
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import { upsertEventAction, deleteEventAction } from "./calendar-action";
 import { Modal } from "@/app/_components/modal";
+import { useConfirm } from "@/app/_components/confirm-dialog";
 
 interface CalendarEvent {
   id: string;
@@ -67,6 +68,7 @@ export function CalendarClient({ events }: CalendarClientProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const handleDateClick = useCallback((arg: DateClickArg) => {
     setFormData({
@@ -137,7 +139,7 @@ export function CalendarClient({ events }: CalendarClientProps) {
 
   const handleDelete = async () => {
     if (!formData.id) return;
-    if (!confirm("Apakah Anda yakin ingin menghapus acara ini?")) return;
+    if (!(await confirm({ title: "Hapus Acara", message: "Apakah Anda yakin ingin menghapus acara ini?", danger: true }))) return;
 
     setIsSubmitting(true);
     try {
