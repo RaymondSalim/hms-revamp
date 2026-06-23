@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -15,6 +16,7 @@ interface DurationRow {
 }
 
 export function DurationTable({ data }: { data: DurationRow[] }) {
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<DurationRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DurationRow | null>(null);
@@ -44,6 +46,7 @@ export function DurationTable({ data }: { data: DurationRow[] }) {
     if (result.success) {
       toast.success(editingRow ? "Durasi berhasil diperbarui" : "Durasi berhasil ditambahkan");
       setModalOpen(false);
+      router.refresh();
     } else {
       toast.error("Gagal menyimpan durasi");
     }
@@ -57,6 +60,7 @@ export function DurationTable({ data }: { data: DurationRow[] }) {
     if (result.success) {
       toast.success("Durasi berhasil dihapus");
       setDeleteConfirm(null);
+      router.refresh();
     } else {
       toast.error(result.error ?? "Gagal menghapus durasi");
       setDeleteConfirm(null);

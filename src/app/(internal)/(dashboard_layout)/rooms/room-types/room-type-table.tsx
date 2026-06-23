@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function RoomTypeTable({ roomTypes, durations, locations, roomTypeDurations }: Props) {
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<RoomTypeRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<RoomTypeRow | null>(null);
@@ -70,6 +72,7 @@ export function RoomTypeTable({ roomTypes, durations, locations, roomTypeDuratio
     if (result.success) {
       toast.success(editingRow ? "Tipe kamar berhasil diperbarui" : "Tipe kamar berhasil ditambahkan");
       setModalOpen(false);
+      router.refresh();
     } else {
       toast.error("Gagal menyimpan tipe kamar");
     }
@@ -83,6 +86,7 @@ export function RoomTypeTable({ roomTypes, durations, locations, roomTypeDuratio
     if (result.success) {
       toast.success("Tipe kamar berhasil dihapus");
       setDeleteConfirm(null);
+      router.refresh();
     } else {
       toast.error(result.error ?? "Gagal menghapus tipe kamar");
       setDeleteConfirm(null);
@@ -116,6 +120,7 @@ export function RoomTypeTable({ roomTypes, durations, locations, roomTypeDuratio
     setLoading(false);
     toast.success("Harga berhasil disimpan");
     setPricingModal(false);
+    router.refresh();
   };
 
   const getPrice = (roomTypeId: number, durationId: number, locationId: number) => {

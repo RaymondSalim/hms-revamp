@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -40,6 +41,7 @@ export interface BookingOption {
 }
 
 export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: BookingOption[] }) {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<GuestRow | null>(null);
   const [detailGuest, setDetailGuest] = useState<GuestRow | null>(null);
@@ -55,6 +57,7 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
     const result = await deleteGuestAction(id);
     if (result.success) {
       toast.success("Tamu berhasil dihapus");
+      router.refresh();
     } else {
       toast.error("Gagal menghapus tamu");
     }
@@ -65,6 +68,7 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
     const result = await deleteGuestStayAction(stayId);
     if (result.success) {
       toast.success("Masa tinggal berhasil dihapus");
+      router.refresh();
     } else {
       toast.error("Gagal menghapus masa tinggal");
     }
@@ -229,7 +233,7 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
         <GuestForm
           guest={editingGuest}
           bookings={bookings}
-          onSuccess={handleCloseModal}
+          onSuccess={() => { handleCloseModal(); router.refresh(); }}
         />
       </Modal>
     </>

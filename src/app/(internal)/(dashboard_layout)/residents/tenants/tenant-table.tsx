@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
@@ -32,6 +33,7 @@ export interface TenantRow {
 }
 
 export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: string }) {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantRow | null>(null);
   const confirm = useConfirm();
@@ -56,6 +58,7 @@ export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: stri
     const result = await deleteTenantAction(id);
     if (result.success) {
       toast.success("Penghuni berhasil dihapus");
+      router.refresh();
     } else {
       toast.error("Gagal menghapus penghuni");
     }
@@ -156,7 +159,7 @@ export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: stri
       >
         <TenantForm
           tenant={editingTenant}
-          onSuccess={handleCloseModal}
+          onSuccess={() => { handleCloseModal(); router.refresh(); }}
         />
       </Modal>
     </>

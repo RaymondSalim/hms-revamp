@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function AddonTable({ addons, locationId }: Props) {
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<AddonRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<AddonRow | null>(null);
@@ -71,6 +73,7 @@ export function AddonTable({ addons, locationId }: Props) {
     if (result.success) {
       toast.success(editingRow ? "Add-on berhasil diperbarui" : "Add-on berhasil ditambahkan");
       setModalOpen(false);
+      router.refresh();
     } else {
       toast.error("Gagal menyimpan add-on");
     }
@@ -84,6 +87,7 @@ export function AddonTable({ addons, locationId }: Props) {
     if (result.success) {
       toast.success("Add-on berhasil dihapus");
       setDeleteConfirm(null);
+      router.refresh();
     } else {
       toast.error(result.error ?? "Gagal menghapus add-on");
       setDeleteConfirm(null);
