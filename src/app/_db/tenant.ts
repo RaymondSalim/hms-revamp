@@ -25,3 +25,39 @@ export async function updateTenant(id: string, data: Partial<Parameters<typeof c
 export async function deleteTenant(id: string) {
   return prisma.tenant.delete({ where: { id } });
 }
+
+export async function getTenantProfile(id: string) {
+  return prisma.tenant.findUnique({
+    where: { id },
+    include: {
+      second_resident: true,
+      second_resident_of: true,
+      notes: {
+        orderBy: { createdAt: "desc" },
+        include: { author: { select: { id: true, name: true } } },
+      },
+      bookings: {
+        where: { deletedAt: null },
+        orderBy: { start_date: "desc" },
+        include: {
+          rooms: { include: { locations: true, roomtypes: true } },
+          durations: true,
+          bookingstatuses: true,
+          deposit: true,
+          bills: {
+            where: { deletedAt: null },
+            orderBy: { due_date: "desc" },
+            include: { bill_item: true, paymentBills: true },
+          },
+          payments: {
+            where: { deletedAt: null },
+            orderBy: { payment_date: "desc" },
+            include: { paymentstatuses: true, paymentBills: true },
+          },
+        },
+      },
+    },
+  });
+}
+
+export type TenantProfile = NonNullable<Awaited<ReturnType<typeof getTenantProfile>>>;
