@@ -36,6 +36,7 @@ model Booking {
   penalties       Penalty[]
   billingPolicies BillingPolicy[]
   meterReadings   MeterReading[]
+  notes           Note[]
 
   @@index([room_id])
   @@index([status_id])
@@ -400,6 +401,7 @@ model SiteUser {
   sessions    Session[]
   roles       Role?     @relation(fields: [role_id], references: [id], onUpdate: NoAction)
   userLocations UserLocation[]
+  notes       Note[]
 
   @@index([role_id])
   @@map("siteusers")
@@ -464,6 +466,25 @@ model Penalty {
 
   @@index([booking_id])
   @@map("penalties")
+}
+
+model Note {
+  id         Int      @id @default(autoincrement())
+  content    String   @db.Text
+  tenant_id  String?
+  booking_id Int?
+
+  created_by String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  tenant  Tenant?  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  author  SiteUser @relation(fields: [created_by], references: [id])
+
+  @@index([tenant_id])
+  @@index([booking_id])
+  @@map("notes")
 }
 
 model Location {
@@ -546,6 +567,7 @@ model Tenant {
   second_resident_id_number String?         @db.VarChar(255)
   bookings                  Booking[]
   checkInOutLogs            CheckInOutLog[]
+  notes                     Note[]
   second_resident           Tenant?         @relation("TenantSecondResident", fields: [second_resident_id], references: [id])
   second_resident_of        Tenant?         @relation("TenantSecondResident")
 
