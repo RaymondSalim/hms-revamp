@@ -1683,6 +1683,34 @@ async function main() {
   });
 
   // ═══════════════════════════════════════════════════════
+  // Notes (tenant-level, for demonstrating the 360° view)
+  // ═══════════════════════════════════════════════════════
+
+  const tenants = await prisma.tenant.findMany({ take: 3 });
+  if (tenants.length > 0) {
+    await prisma.note.createMany({
+      data: [
+        {
+          content: "Penyewa meminta perpanjangan kontrak 6 bulan. Diskusi harga baru pending.",
+          tenant_id: tenants[0].id,
+          created_by: admin.id,
+        },
+        {
+          content: "Sudah menyerahkan fotokopi KTP dan KK baru. File di-update.",
+          tenant_id: tenants[0].id,
+          created_by: manager.id,
+        },
+        {
+          content: "Keluhan AC bocor sudah ditangani maintenance 15 Juni.",
+          tenant_id: tenants[1]?.id ?? tenants[0].id,
+          created_by: staffUser.id,
+        },
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
   // Logs (audit trail)
   // ═══════════════════════════════════════════════════════
 
@@ -1773,6 +1801,7 @@ async function main() {
   console.log("  Communication:");
   console.log("  - 6 email templates");
   console.log("  - 6 email logs (5 sent, 1 failed)");
+  console.log("  - 3 tenant notes (various authors)");
   console.log("  - 15 audit logs");
   console.log("  - 1 verification token");
   console.log("");
