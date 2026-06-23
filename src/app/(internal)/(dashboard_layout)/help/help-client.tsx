@@ -108,6 +108,7 @@ const sections: HelpSection[] = [
       "T: Bisa membatalkan check-out?\nJ: Tidak. Check-out bersifat final. Jika ada kesalahan, buat pemesanan baru.",
       "T: Bagaimana menambah biaya tambahan (listrik, air)?\nJ: Buka halaman Tagihan, klik 'Edit' pada tagihan yang sesuai, lalu tambah item baru di bagian bawah modal.",
       "T: Zona waktu apa yang digunakan sistem?\nJ: Semua tanggal dan waktu menggunakan WIB (Waktu Indonesia Barat, UTC+7), terlepas dari lokasi akses Anda.",
+      "T: Bagaimana cara melihat profil lengkap penyewa?\nJ: Klik nama penyewa di tabel Penyewa atau ikon detail (mata) di kolom Aksi. Halaman profil menampilkan ringkasan keuangan, daftar pemesanan, tagihan & pembayaran, serta catatan internal.",
     ],
   },
 ];
