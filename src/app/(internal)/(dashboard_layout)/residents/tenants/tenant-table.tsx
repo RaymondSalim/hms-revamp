@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -59,6 +60,15 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
     {
       accessorKey: "name",
       header: "Nama",
+      cell: ({ row }) => (
+        <Link
+          href={`/residents/tenants/${row.original.id}`}
+          className="hover:underline font-medium"
+          style={{ color: "var(--color-accent)" }}
+        >
+          {row.original.name}
+        </Link>
+      ),
     },
     {
       accessorKey: "email",
@@ -80,9 +90,11 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
       cell: ({ row }) => (
         <ActionMenu
           items={[
+            { label: "Detail", icon: Icons.detail, onClick: () => { window.location.href = `/residents/tenants/${row.original.id}`; } },
             { label: "Edit", icon: Icons.edit, onClick: () => handleEdit(row.original) },
             { label: "Hapus", icon: Icons.delete, onClick: () => handleDelete(row.original.id), variant: "danger" },
           ]}
+          maxInline={3}
         />
       ),
     },
