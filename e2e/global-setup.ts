@@ -1,5 +1,8 @@
 import { execSync } from "node:child_process";
+import path from "node:path";
 import { PrismaClient } from "@prisma/client";
+
+const ROOT = path.resolve(__dirname, "..");
 
 const E2E_DATABASE_URL = "postgresql://e2e:e2e@localhost:5434/hms_e2e";
 
@@ -19,6 +22,40 @@ async function truncateAll(): Promise<void> {
       BEGIN
         FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
           EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' RESTART IDENTITY CASCADE';
+        END LOOP;
+      END $$;
+    `);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+/**
+ * After seeding with explicit IDs, Postgres auto-increment sequences may be
+ * behind the max id — causing unique constraint violations on the next insert.
+ * This resets all serial sequences to max(id)+1.
+ */
+async function syncSequences(): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: { db: { url: E2E_DATABASE_URL } },
+  });
+  try {
+    await prisma.$executeRawUnsafe(`
+      DO $$ DECLARE
+        r RECORD;
+      BEGIN
+        FOR r IN (
+          SELECT s.relname AS seq, t.relname AS tbl, a.attname AS col
+          FROM pg_class s
+          JOIN pg_depend d ON d.objid = s.oid
+          JOIN pg_class t ON t.oid = d.refobjid
+          JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = d.refobjsubid
+          WHERE s.relkind = 'S' AND t.relkind = 'r'
+        ) LOOP
+          EXECUTE format(
+            'SELECT setval(%L, COALESCE((SELECT MAX(%I) FROM %I), 0) + 1, false)',
+            r.seq, r.col, r.tbl
+          );
         END LOOP;
       END $$;
     `);
@@ -53,6 +90,7 @@ export default async function globalSetup(): Promise<void> {
   // 1. Push the current Prisma schema into the E2E database (idempotent).
   execSync("npx prisma db push --skip-generate --accept-data-loss", {
     env,
+    cwd: ROOT,
     stdio: "inherit",
   });
 
@@ -60,9 +98,12 @@ export default async function globalSetup(): Promise<void> {
   await truncateAll();
 
   // 3. Seed base data (admin user, RBAC, settings) then mock data.
-  execSync("npx tsx prisma/seed.ts", { env, stdio: "inherit" });
-  execSync("npx tsx prisma/seed-mock.ts", { env, stdio: "inherit" });
+  execSync("npx tsx prisma/seed.ts", { env, cwd: ROOT, stdio: "inherit" });
+  execSync("npx tsx prisma/seed-mock.ts", { env, cwd: ROOT, stdio: "inherit" });
 
-  // 4. Treat the instance as already configured (skip the setup wizard).
+  // 4. Sync auto-increment sequences to max existing id (seeds use explicit ids).
+  await syncSequences();
+
+  // 5. Treat the instance as already configured (skip the setup wizard).
   await markAppConfigured();
 }

@@ -32,11 +32,12 @@ test.describe("CRUD mutations update UI without manual refresh", () => {
       await page.getByRole("button", { name: "Simpan Catatan" }).click();
       await expect(page.getByText(noteText)).toBeVisible();
 
-      // Delete it
-      const noteCard = page.locator("div", { hasText: noteText }).filter({ has: page.getByText("Hapus") });
-      await noteCard.getByText("Hapus").click();
-      // Confirm dialog
-      await page.getByRole("button", { name: "Hapus" }).last().click();
+      // Delete it — find the note card containing our text and click its Hapus button
+      const noteCards = page.locator("div.rounded-lg.border.p-3");
+      const targetCard = noteCards.filter({ hasText: noteText });
+      await targetCard.getByRole("button", { name: "Hapus" }).click();
+      // Confirm dialog (useConfirm uses "Ya, lanjutkan" as default confirm label)
+      await page.getByRole("button", { name: "Ya, lanjutkan" }).click();
 
       await expect(page.getByText("Catatan dihapus")).toBeVisible();
       await expect(page.getByText(noteText)).not.toBeVisible();
@@ -86,10 +87,9 @@ test.describe("CRUD mutations update UI without manual refresh", () => {
       await page.getByRole("button", { name: "Simpan" }).click();
       await expect(page.getByRole("cell", { name: locName })).toBeVisible();
 
-      // Delete it via ActionMenu
+      // Delete it via ActionMenu (inline icon buttons with title attributes)
       const row = page.getByRole("row", { name: new RegExp(locName) });
-      await row.getByRole("button").click();
-      await page.getByText("Hapus").click();
+      await row.getByRole("button", { name: "Hapus" }).click();
       // Confirm modal
       await page.getByRole("button", { name: "Hapus" }).last().click();
 
@@ -126,10 +126,9 @@ test.describe("CRUD mutations update UI without manual refresh", () => {
       await page.getByRole("button", { name: "Simpan" }).click();
       await expect(page.getByRole("cell", { name: durLabel })).toBeVisible();
 
-      // Delete via ActionMenu
+      // Delete via ActionMenu (inline icon buttons with title attributes)
       const row = page.getByRole("row", { name: new RegExp(durLabel) });
-      await row.getByRole("button").click();
-      await page.getByText("Hapus").click();
+      await row.getByRole("button", { name: "Hapus" }).click();
       // Confirm modal
       await page.getByRole("button", { name: "Hapus" }).last().click();
 
