@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { addNoteAction, deleteNoteAction } from "./notes-action";
 import { toast } from "react-toastify";
 import { useConfirm } from "@/app/_components/confirm-dialog";
@@ -43,6 +44,7 @@ export function NotesSection({
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const confirm = useConfirm();
+  const router = useRouter();
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +55,7 @@ export function NotesSection({
       if (result.success) {
         setContent("");
         toast.success("Catatan ditambahkan");
+        router.refresh();
       } else {
         toast.error(result.error);
       }
@@ -68,6 +71,7 @@ export function NotesSection({
     const result = await deleteNoteAction(noteId);
     if (result.success) {
       toast.success("Catatan dihapus");
+      router.refresh();
     } else {
       toast.error(result.error);
     }

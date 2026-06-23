@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
@@ -31,10 +31,20 @@ export interface TenantRow {
   second_resident_relation: string | null;
 }
 
-export function TenantTable({ data }: { data: TenantRow[] }) {
+export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantRow | null>(null);
   const confirm = useConfirm();
+
+  useEffect(() => {
+    if (editId) {
+      const tenant = data.find((t) => t.id === editId);
+      if (tenant) {
+        setEditingTenant(tenant);
+        setIsModalOpen(true);
+      }
+    }
+  }, [editId, data]);
 
   const handleEdit = (tenant: TenantRow) => {
     setEditingTenant(tenant);
