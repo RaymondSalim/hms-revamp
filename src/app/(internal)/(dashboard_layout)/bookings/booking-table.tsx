@@ -11,8 +11,9 @@ import {
   checkInOutAction,
 } from "./booking-action";
 import { BookingForm } from "./booking-form";
-import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { ActionMenu, Icons, DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
 
 export interface BookingRow {
   id: number;
@@ -172,6 +173,9 @@ export function BookingTable({
   const [loading, setLoading] = useState(false);
   const [endDateValue, setEndDateValue] = useState("");
 
+  const { can } = usePermissions();
+  const canManage = can("bookings.manage");
+
   const openCreate = () => {
     setEditingRow(null);
     setModalOpen(true);
@@ -303,13 +307,13 @@ export function BookingTable({
       enableSorting: false,
       cell: ({ row }) => {
         const items = [
-          { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
-          { label: "Check In", icon: Icons.checkIn, onClick: () => setCheckInOutModal({ booking: row.original, type: "CHECK_IN" }), variant: "success" as const },
-          { label: "Check Out", icon: Icons.checkOut, onClick: () => setCheckInOutModal({ booking: row.original, type: "CHECK_OUT" }), variant: "warning" as const },
+          { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage },
+          { label: "Check In", icon: Icons.checkIn, onClick: () => setCheckInOutModal({ booking: row.original, type: "CHECK_IN" }), variant: "success" as const, disabled: !canManage },
+          { label: "Check Out", icon: Icons.checkOut, onClick: () => setCheckInOutModal({ booking: row.original, type: "CHECK_OUT" }), variant: "warning" as const, disabled: !canManage },
           ...(row.original.is_rolling && !row.original.end_date
-            ? [{ label: "Akhiri", icon: Icons.endBooking, onClick: () => setScheduleEndModal(row.original), variant: "info" as const }]
+            ? [{ label: "Akhiri", icon: Icons.endBooking, onClick: () => setScheduleEndModal(row.original), variant: "info" as const, disabled: !canManage }]
             : []),
-          { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" as const },
+          { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" as const, disabled: !canManage },
         ];
         return <ActionMenu items={items} maxInline={2} />;
       },
@@ -330,7 +334,9 @@ export function BookingTable({
         </h1>
         <button
           onClick={openCreate}
-          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-accent)" }}
         >
           + Tambah Pemesanan

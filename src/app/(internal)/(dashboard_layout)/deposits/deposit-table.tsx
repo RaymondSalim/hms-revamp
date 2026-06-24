@@ -9,6 +9,7 @@ import {
   updateDepositAmountAction,
 } from "./deposit-action";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { usePermissions } from "@/app/_context/permissions-context";
 
 type DepositStatus =
   | "UNPAID"
@@ -66,6 +67,9 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
   const [amountModalDeposit, setAmountModalDeposit] = useState<Deposit | null>(
     null,
   );
+
+  const { can } = usePermissions();
+  const canManage = can("deposits.manage");
 
   const columns: ColumnDef<Deposit, unknown>[] = [
     {
@@ -128,10 +132,10 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
         const deposit = row.original;
         const items = [
           ...(deposit.status === "HELD"
-            ? [{ label: "Ubah Status", icon: Icons.status, onClick: () => setStatusModalDeposit(deposit) }]
+            ? [{ label: "Ubah Status", icon: Icons.status, onClick: () => setStatusModalDeposit(deposit), disabled: !canManage }]
             : []),
           ...((deposit.status === "UNPAID" || deposit.status === "HELD")
-            ? [{ label: "Edit Jumlah", icon: Icons.money, onClick: () => setAmountModalDeposit(deposit), variant: "warning" as const }]
+            ? [{ label: "Edit Jumlah", icon: Icons.money, onClick: () => setAmountModalDeposit(deposit), variant: "warning" as const, disabled: !canManage }]
             : []),
         ];
         if (items.length === 0) return null;

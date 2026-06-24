@@ -13,8 +13,9 @@ import {
   deleteBillItemAction,
   resendBillEmailAction,
 } from "./bill-action";
-import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { ActionMenu, Icons, DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
 
 // --- Types ---
 
@@ -122,6 +123,9 @@ export function BillTable({
   const [newBillItems, setNewBillItems] = useState<
     Array<{ description: string; amount: string; internal_description: string }>
   >([{ description: "", amount: "", internal_description: "" }]);
+
+  const { can } = usePermissions();
+  const canManage = can("bills.manage");
 
   const handleUpdateDueDate = async () => {
     if (!editBillModal || !dueDateValue) return;
@@ -364,6 +368,7 @@ export function BillTable({
               label: "Edit",
               icon: Icons.edit,
               onClick: () => { setEditBillModal(row.original); setDueDateValue(row.original.due_date.split("T")[0]); resetItemForm(); },
+              disabled: !canManage,
             },
             {
               label: "Kirim Email",
@@ -376,6 +381,7 @@ export function BillTable({
                   toast.error(result.error ?? "Gagal mengirim email");
                 }
               },
+              disabled: !canManage,
             },
           ]}
           maxInline={2}
@@ -401,7 +407,9 @@ export function BillTable({
         </h1>
         <button
           onClick={() => setCreateBillModal(true)}
-          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-accent)" }}
         >
           + Tambah Tagihan
@@ -494,7 +502,9 @@ export function BillTable({
                       <div className="flex gap-1">
                         <button
                           onClick={() => openEditItem(item)}
-                          className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                          disabled={!canManage}
+                          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+                          className="px-2 py-0.5 text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{
                             backgroundColor: "var(--color-accent-light)",
                             color: "var(--color-accent)",
@@ -505,7 +515,9 @@ export function BillTable({
                         {item.type === "CREATED" && (
                           <button
                             onClick={() => setDeleteItemConfirm(item)}
-                            className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                            disabled={!canManage}
+                            title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+                            className="px-2 py-0.5 text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{
                               backgroundColor: "#FEE2E2",
                               color: "#DC2626",
@@ -623,8 +635,9 @@ export function BillTable({
                 />
                 <button
                   onClick={handleUpdateDueDate}
-                  disabled={loading || !dueDateValue || dueDateValue === editBillModal.due_date.split("T")[0]}
-                  className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+                  disabled={loading || !dueDateValue || dueDateValue === editBillModal.due_date.split("T")[0] || !canManage}
+                  title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+                  className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: "var(--color-accent)" }}
                 >
                   {loading ? "..." : "Simpan"}
@@ -660,7 +673,9 @@ export function BillTable({
                           <div className="flex gap-1">
                             <button
                               onClick={() => openEditItem(item)}
-                              className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                              disabled={!canManage}
+                              title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+                              className="px-2 py-0.5 text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               style={{ backgroundColor: "var(--color-accent-light)", color: "var(--color-accent)" }}
                             >
                               Edit
@@ -668,7 +683,9 @@ export function BillTable({
                             {item.type === "CREATED" && (
                               <button
                                 onClick={() => setDeleteItemConfirm(item)}
-                                className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                                disabled={!canManage}
+                                title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+                                className="px-2 py-0.5 text-xs font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}
                               >
                                 Hapus
@@ -736,8 +753,9 @@ export function BillTable({
               <div className="flex justify-end mt-3">
                 <button
                   onClick={handleAddItem}
-                  disabled={loading || !itemDesc || !itemAmount}
-                  className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+                  disabled={loading || !itemDesc || !itemAmount || !canManage}
+                  title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+                  className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: "var(--color-accent)" }}
                 >
                   {loading ? "Menyimpan..." : "+ Tambah Item"}
@@ -840,8 +858,9 @@ export function BillTable({
             </button>
             <button
               onClick={handleEditItem}
-              disabled={loading || !itemDesc || !itemAmount}
-              className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+              disabled={loading || !itemDesc || !itemAmount || !canManage}
+              title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+              className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--color-accent)" }}
             >
               {loading ? "Menyimpan..." : "Simpan"}
@@ -1036,7 +1055,9 @@ export function BillTable({
                   { description: "", amount: "", internal_description: "" },
                 ])
               }
-              className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+              disabled={!canManage}
+              title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: "var(--color-accent-light)",
                 color: "var(--color-accent)",
@@ -1066,9 +1087,11 @@ export function BillTable({
                 loading ||
                 !newBillBookingId ||
                 !newBillDescription ||
-                !newBillDueDate
+                !newBillDueDate ||
+                !canManage
               }
-              className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+              title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+              className="px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--color-accent)" }}
             >
               {loading ? "Menyimpan..." : "Buat Tagihan"}

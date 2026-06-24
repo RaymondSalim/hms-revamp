@@ -8,9 +8,10 @@ import { FileUpload } from "@/app/_components/file-upload";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import { simulateUnpaidBillPaymentAction } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
 import { upsertPaymentAction, deletePaymentAction } from "./payment-action";
-import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { ActionMenu, Icons, DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 import { SearchableSelect } from "@/app/_components/searchable-select";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
 
 // --- Type Definitions ---
 
@@ -135,6 +136,9 @@ export function PaymentTable({
     Array<{ bill_id: number; amount: string }>
   >([]);
   const [allocPreview, setAllocPreview] = useState<AllocationPreview[]>([]);
+
+  const { can } = usePermissions();
+  const canManage = can("payments.manage");
 
   const resetForm = () => {
     setFormBookingId("");
@@ -365,8 +369,8 @@ export function PaymentTable({
       cell: ({ row }) => (
         <ActionMenu
           items={[
-            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger", disabled: !canManage },
           ]}
         />
       ),
@@ -393,7 +397,9 @@ export function PaymentTable({
         </h1>
         <button
           onClick={openCreate}
-          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-accent)" }}
         >
           + Tambah Pembayaran
