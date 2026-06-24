@@ -9,7 +9,7 @@ export default async function InternalLayout({
 }) {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user) {
     redirect("/login");
   }
 
