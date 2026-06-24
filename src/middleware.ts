@@ -5,6 +5,7 @@ export function middleware(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }

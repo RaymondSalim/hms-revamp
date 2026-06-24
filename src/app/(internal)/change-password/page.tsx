@@ -5,11 +5,10 @@ import { ChangePasswordForm } from "./change-password-form";
 export default async function ChangePasswordPage() {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user) {
     redirect("/login");
   }
 
-  // If user doesn't need to reset, redirect to dashboard
   if (!session.user.shouldReset) {
     redirect("/dashboard");
   }

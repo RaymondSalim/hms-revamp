@@ -7,7 +7,7 @@ const SESSION_MAX_AGE_SHORT = 60 * 60; // 1 hour (active session, kept alive by 
 const SESSION_MAX_AGE_LONG = 60 * 60 * 24 * 30; // 30 days ("keep me signed in")
 const TOKEN_REFRESH_INTERVAL = 60 * 15; // Rotate token every 15 minutes of activity
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   providers: [
     Credentials({
       credentials: {
@@ -41,8 +41,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_LONG },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session: updateData }) {
       const now = Math.floor(Date.now() / 1000);
+
+      if (trigger === "update" && updateData) {
+        if (updateData.user?.shouldReset !== undefined) {
+          token.shouldReset = updateData.user.shouldReset;
+        }
+        return token;
+      }
 
       if (user) {
         // Initial login — store all user data + session preferences

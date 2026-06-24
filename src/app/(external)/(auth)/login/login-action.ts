@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn } from "@/app/_lib/auth";
+import { signIn, auth } from "@/app/_lib/auth";
 import { loginSchema } from "@/app/_lib/zod/auth/zod";
 
 export async function loginAction(formData: {
@@ -18,7 +18,11 @@ export async function loginAction(formData: {
       rememberMe: formData.rememberMe ? "true" : "false",
       redirect: false,
     });
-    return { success: true as const };
+    const session = await auth();
+    return {
+      success: true as const,
+      redirectTo: session?.user?.shouldReset ? "/change-password" : "/dashboard",
+    };
   } catch (error: unknown) {
     return {
       success: false as const,
