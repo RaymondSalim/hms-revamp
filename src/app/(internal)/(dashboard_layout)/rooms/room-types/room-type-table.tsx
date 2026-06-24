@@ -6,8 +6,9 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
 import { upsertRoomTypeAction, deleteRoomTypeAction, upsertRoomTypeDurationAction } from "./room-type-action";
-import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { ActionMenu, Icons, DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
 
 interface RoomTypeRow {
   id: number;
@@ -47,6 +48,8 @@ export function RoomTypeTable({ roomTypes, durations, locations, roomTypeDuratio
   const [deleteConfirm, setDeleteConfirm] = useState<RoomTypeRow | null>(null);
   const [pricingModal, setPricingModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { can } = usePermissions();
+  const canManage = can("room_types.manage");
 
   const openCreate = () => {
     setEditingRow(null);
@@ -144,8 +147,8 @@ export function RoomTypeTable({ roomTypes, durations, locations, roomTypeDuratio
       cell: ({ row }) => (
         <ActionMenu
           items={[
-            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage, disabledReason: DEFAULT_DISABLED_REASON },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger", disabled: !canManage, disabledReason: DEFAULT_DISABLED_REASON },
           ]}
         />
       ),
@@ -164,14 +167,18 @@ export function RoomTypeTable({ roomTypes, durations, locations, roomTypeDuratio
         <div className="flex gap-3">
           <button
             onClick={() => setPricingModal(true)}
-            className="px-4 py-2.5 text-sm font-medium rounded-lg border transition-colors"
+            disabled={!canManage}
+            title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+            className="px-4 py-2.5 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ borderColor: "var(--color-accent)", color: "var(--color-accent)" }}
           >
             Atur Harga
           </button>
           <button
             onClick={openCreate}
-            className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
+            disabled={!canManage}
+            title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+            className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: "var(--color-accent)" }}
           >
             + Tambah Tipe

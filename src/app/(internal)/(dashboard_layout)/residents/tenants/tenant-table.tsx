@@ -8,9 +8,10 @@ import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
 import { TenantForm } from "./tenant-form";
 import { deleteTenantAction } from "./tenant-action";
-import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { ActionMenu, Icons, DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 import { useConfirm } from "@/app/_components/confirm-dialog";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
 
 export interface TenantRow {
   id: string;
@@ -37,6 +38,8 @@ export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: stri
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantRow | null>(null);
   const confirm = useConfirm();
+  const { can } = usePermissions();
+  const canManage = can("tenants.manage");
 
   useEffect(() => {
     if (editId) {
@@ -104,8 +107,8 @@ export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: stri
         <ActionMenu
           items={[
             { label: "Detail", icon: Icons.detail, onClick: () => { window.location.href = `/residents/tenants/${row.original.id}`; } },
-            { label: "Edit", icon: Icons.edit, onClick: () => handleEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => handleDelete(row.original.id), variant: "danger" },
+            { label: "Edit", icon: Icons.edit, onClick: () => handleEdit(row.original), disabled: !canManage, disabledReason: DEFAULT_DISABLED_REASON },
+            { label: "Hapus", icon: Icons.delete, onClick: () => handleDelete(row.original.id), variant: "danger", disabled: !canManage, disabledReason: DEFAULT_DISABLED_REASON },
           ]}
           maxInline={3}
         />
@@ -127,7 +130,9 @@ export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: stri
         </h1>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             backgroundColor: "var(--color-accent)",
             color: "white",

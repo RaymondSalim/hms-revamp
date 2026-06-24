@@ -7,10 +7,11 @@ import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
 import { GuestForm } from "./guest-form";
 import { deleteGuestAction, deleteGuestStayAction } from "./guest-action";
-import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { ActionMenu, Icons, DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 import { useConfirm } from "@/app/_components/confirm-dialog";
 import { toast } from "react-toastify";
 import { formatCurrency } from "@/app/_lib/util/currency";
+import { usePermissions } from "@/app/_context/permissions-context";
 
 export interface GuestStayRow {
   id: number;
@@ -46,6 +47,8 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
   const [editingGuest, setEditingGuest] = useState<GuestRow | null>(null);
   const [detailGuest, setDetailGuest] = useState<GuestRow | null>(null);
   const confirm = useConfirm();
+  const { can } = usePermissions();
+  const canManage = can("guests.manage");
 
   const handleEdit = (guest: GuestRow) => {
     setEditingGuest(guest);
@@ -132,8 +135,8 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
             ...(row.original.GuestStay.length > 0
               ? [{ label: "Detail", icon: Icons.detail, onClick: () => setDetailGuest(row.original) }]
               : []),
-            { label: "Edit", icon: Icons.edit, onClick: () => handleEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => handleDelete(row.original.id), variant: "danger" as const },
+            { label: "Edit", icon: Icons.edit, onClick: () => handleEdit(row.original), disabled: !canManage, disabledReason: DEFAULT_DISABLED_REASON },
+            { label: "Hapus", icon: Icons.delete, onClick: () => handleDelete(row.original.id), variant: "danger" as const, disabled: !canManage, disabledReason: DEFAULT_DISABLED_REASON },
           ]}
         />
       ),
@@ -154,7 +157,9 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
         </h1>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             backgroundColor: "var(--color-accent)",
             color: "white",
