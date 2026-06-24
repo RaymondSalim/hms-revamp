@@ -33,4 +33,21 @@ test.describe("Viewer sees manage actions disabled", () => {
     await expect(editBtn).toBeDisabled();
     await expect(deleteBtn).toBeDisabled();
   });
+
+  // Transactional page: the mutating create button is disabled, but the
+  // read-only "Detail" row action must REMAIN enabled for everyone.
+  test("bills: create disabled, but read-only Detail stays enabled", async ({ page }) => {
+    await loginAsViewer(page);
+    await page.goto(ROUTES.bills);
+    await expect(page.getByRole("main").getByRole("heading", { name: "Tagihan" })).toBeVisible();
+
+    const createBtn = page.getByRole("button", { name: "+ Tambah Tagihan" });
+    await expect(createBtn).toBeDisabled();
+
+    const firstRow = page.locator("table tbody tr").first();
+    await expect(firstRow).toBeVisible();
+    // "Detail" is a read-only inline action — it must not be disabled.
+    const detailBtn = firstRow.locator('button[title="Detail"]');
+    await expect(detailBtn).toBeEnabled();
+  });
 });
