@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -30,10 +32,21 @@ export interface TenantRow {
   second_resident_relation: string | null;
 }
 
-export function TenantTable({ data }: { data: TenantRow[] }) {
+export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: string }) {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantRow | null>(null);
   const confirm = useConfirm();
+
+  useEffect(() => {
+    if (editId) {
+      const tenant = data.find((t) => t.id === editId);
+      if (tenant) {
+        setEditingTenant(tenant);
+        setIsModalOpen(true);
+      }
+    }
+  }, [editId, data]);
 
   const handleEdit = (tenant: TenantRow) => {
     setEditingTenant(tenant);
@@ -45,6 +58,7 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
     const result = await deleteTenantAction(id);
     if (result.success) {
       toast.success("Penghuni berhasil dihapus");
+      router.refresh();
     } else {
       toast.error("Gagal menghapus penghuni");
     }
@@ -59,6 +73,15 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
     {
       accessorKey: "name",
       header: "Nama",
+      cell: ({ row }) => (
+        <Link
+          href={`/residents/tenants/${row.original.id}`}
+          className="hover:underline font-medium"
+          style={{ color: "var(--color-accent)" }}
+        >
+          {row.original.name}
+        </Link>
+      ),
     },
     {
       accessorKey: "email",
@@ -80,9 +103,11 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
       cell: ({ row }) => (
         <ActionMenu
           items={[
+            { label: "Detail", icon: Icons.detail, onClick: () => { window.location.href = `/residents/tenants/${row.original.id}`; } },
             { label: "Edit", icon: Icons.edit, onClick: () => handleEdit(row.original) },
             { label: "Hapus", icon: Icons.delete, onClick: () => handleDelete(row.original.id), variant: "danger" },
           ]}
+          maxInline={3}
         />
       ),
     },
@@ -134,7 +159,7 @@ export function TenantTable({ data }: { data: TenantRow[] }) {
       >
         <TenantForm
           tenant={editingTenant}
-          onSuccess={handleCloseModal}
+          onSuccess={() => { handleCloseModal(); router.refresh(); }}
         />
       </Modal>
     </>

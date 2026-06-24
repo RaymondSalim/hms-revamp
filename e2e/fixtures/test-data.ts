@@ -13,6 +13,9 @@ export const ROUTES = {
   bills: "/bills",
   payments: "/payments",
   emailLogs: "/settings/email-logs",
+  tenants: "/residents/tenants",
+  locations: "/locations",
+  durations: "/rooms/durations",
 } as const;
 
 // Where the saved admin session is written by auth.setup.ts.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -15,6 +16,7 @@ interface LocationRow {
 }
 
 export function LocationTable({ data }: { data: LocationRow[] }) {
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<LocationRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<LocationRow | null>(null);
@@ -44,6 +46,7 @@ export function LocationTable({ data }: { data: LocationRow[] }) {
     if (result.success) {
       toast.success(editingRow ? "Lokasi berhasil diperbarui" : "Lokasi berhasil ditambahkan");
       setModalOpen(false);
+      router.refresh();
     } else {
       toast.error("Gagal menyimpan lokasi");
     }
@@ -57,6 +60,7 @@ export function LocationTable({ data }: { data: LocationRow[] }) {
     if (result.success) {
       toast.success("Lokasi berhasil dihapus");
       setDeleteConfirm(null);
+      router.refresh();
     } else {
       toast.error(result.error ?? "Gagal menghapus lokasi");
       setDeleteConfirm(null);

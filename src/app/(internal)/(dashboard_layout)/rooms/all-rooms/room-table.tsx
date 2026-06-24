@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
+  const router = useRouter();
   const { selectedLocationId } = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<RoomRow | null>(null);
@@ -68,6 +70,7 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
     if (result.success) {
       toast.success(editingRow ? "Kamar berhasil diperbarui" : "Kamar berhasil ditambahkan");
       setModalOpen(false);
+      router.refresh();
     } else {
       toast.error(typeof result.error === "string" ? result.error : "Gagal menyimpan kamar");
     }
@@ -81,6 +84,7 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
     if (result.success) {
       toast.success("Kamar berhasil dihapus");
       setDeleteConfirm(null);
+      router.refresh();
     } else {
       toast.error(result.error ?? "Gagal menghapus kamar");
       setDeleteConfirm(null);
