@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { auth } from "@/app/_lib/auth";
 
 export default async function InternalLayout({
@@ -13,7 +14,11 @@ export default async function InternalLayout({
   }
 
   if (session.user.shouldReset) {
-    redirect("/change-password");
+    const headerList = await headers();
+    const pathname = headerList.get("x-pathname") ?? "";
+    if (!pathname.startsWith("/change-password")) {
+      redirect("/change-password");
+    }
   }
 
   return <>{children}</>;

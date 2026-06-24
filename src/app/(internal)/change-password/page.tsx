@@ -9,7 +9,6 @@ export default async function ChangePasswordPage() {
     redirect("/login");
   }
 
-  // If user doesn't need to reset, redirect to dashboard
   if (!session.user.shouldReset) {
     redirect("/dashboard");
   }

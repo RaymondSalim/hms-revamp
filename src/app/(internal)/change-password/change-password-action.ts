@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/app/_lib/auth";
+import { auth, unstable_update } from "@/app/_lib/auth";
 import { updateUser } from "@/app/_db/site-users";
 import { changePasswordSchema } from "@/app/_lib/zod/settings/zod";
 import bcrypt from "bcrypt";
@@ -19,6 +19,8 @@ export async function changePasswordAction(data: { password: string; confirmPass
 
   const hashed = await bcrypt.hash(parsed.data.password, 10);
   await updateUser(session.user.id, { password: hashed, shouldReset: false });
+
+  await unstable_update({ user: { ...session.user, shouldReset: false } });
 
   return { success: true };
 }
