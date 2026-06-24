@@ -132,7 +132,7 @@ export function NotesSection({
                   {note.author.name} · <span title={new Date(note.createdAt).toLocaleString("id-ID")}>{relativeTime(note.createdAt)}</span>
                 </span>
                 <button
-                  onClick={() => handleDelete(note.id)}
+                  onClick={canDelete ? () => handleDelete(note.id) : undefined}
                   disabled={!canDelete}
                   title={canDelete ? undefined : DEFAULT_DISABLED_REASON}
                   className="text-xs px-2 py-1 rounded disabled:opacity-40 disabled:cursor-not-allowed"
