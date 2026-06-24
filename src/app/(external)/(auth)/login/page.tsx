@@ -21,7 +21,7 @@ export default function LoginPage() {
     const result = await loginAction({ email, password, rememberMe });
 
     if (result.success) {
-      router.push("/dashboard");
+      window.location.href = result.redirectTo;
     } else {
       setError(
         typeof result.error === "string"
