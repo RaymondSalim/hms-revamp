@@ -9,6 +9,8 @@ import { upsertRoomAction, deleteRoomAction } from "./room-action";
 import { useLocation } from "@/app/_context/location-context";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
+import { DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 
 interface RoomRow {
   id: number;
@@ -39,6 +41,8 @@ interface Props {
 export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
   const router = useRouter();
   const { selectedLocationId } = useLocation();
+  const { can } = usePermissions();
+  const canManage = can("rooms.manage");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<RoomRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<RoomRow | null>(null);
@@ -110,8 +114,8 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
       cell: ({ row }) => (
         <ActionMenu
           items={[
-            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger", disabled: !canManage },
           ]}
         />
       ),
@@ -129,7 +133,9 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
         </h1>
         <button
           onClick={openCreate}
-          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-accent)" }}
         >
           + Tambah Kamar
