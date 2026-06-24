@@ -88,6 +88,7 @@ const sections: HelpSection[] = [
       "Lokasi: tambah/edit properti yang dikelola. Setiap lokasi memiliki kamar dan penyewa terpisah.",
       "Pengguna: tambah staf baru dan atur hak akses mereka.",
       "Hak Akses: buat peran (role) dengan izin spesifik. Misal: 'Resepsionis' hanya bisa lihat pemesanan tapi tidak bisa edit keuangan.",
+      "Tombol tindakan dinonaktifkan: Jika peran Anda tidak memiliki izin untuk suatu tindakan (misalnya menambah atau menghapus), tombolnya akan tampil redup dan tidak dapat diklik. Arahkan kursor ke tombol untuk melihat keterangannya.",
       "Kebijakan Tagihan: atur tanggal jatuh tempo default dan denda keterlambatan.",
       "Template Email: kustomisasi email notifikasi yang dikirim ke penyewa. Editor visual (WYSIWYG) tersedia untuk edit konten tanpa perlu tahu HTML. Gunakan tombol 'HTML' untuk beralih ke mode kode mentah.",
       "Template Email — Variabel: klik badge variabel (misal: {{tenant_name}}) untuk menyisipkan data dinamis ke dalam template.",

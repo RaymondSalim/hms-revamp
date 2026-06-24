@@ -1,10 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { VIEWER, ROUTES } from "../fixtures/test-data";
 
 // Fresh context — do not reuse the admin session.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function loginAsViewer(page) {
+async function loginAsViewer(page: Page) {
   await page.goto(ROUTES.login);
   await page.locator('input[type="email"]').fill(VIEWER.email);
   await page.locator('input[type="password"]').fill(VIEWER.password);
