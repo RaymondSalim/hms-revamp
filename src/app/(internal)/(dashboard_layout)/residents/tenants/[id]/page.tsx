@@ -24,7 +24,6 @@ export default async function TenantProfilePage({
   if (!tenant) notFound();
 
   const summary = computeFinancialSummary(tenant.bookings);
-  const canManageNotes = permissions.has("roles.manage");
 
   const serialized = serializeForClient({
     tenant,
@@ -57,7 +56,6 @@ export default async function TenantProfilePage({
       <NotesSection
         notes={serialized.tenant.notes}
         tenantId={tenant.id}
-        canDelete={canManageNotes}
       />
     </div>
   );
