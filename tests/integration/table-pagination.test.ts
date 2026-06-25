@@ -8,6 +8,7 @@ import { getBookingsPage } from "@/app/_db/bookings";
 import { getRoomsPage } from "@/app/_db/rooms";
 import { getAddonsPage } from "@/app/_db/addons";
 import { getTenantsPage } from "@/app/_db/tenant";
+import { getGuestsPage } from "@/app/_db/guests";
 import type { TableParams } from "@/app/_lib/util/table-params";
 
 const baseParams: TableParams = {
@@ -329,6 +330,48 @@ describe("server-side table pagination", () => {
       expect(asc.rows.map((r) => r.name)).toEqual(["Ahmad", "Bayu", "Cipto"]);
       const desc = await getTenantsPage({ ...baseParams, sortBy: "name", sortDir: "desc" });
       expect(desc.rows.map((r) => r.name)).toEqual(["Cipto", "Bayu", "Ahmad"]);
+    });
+  });
+
+  describe("getGuestsPage", () => {
+    async function seedGuests() {
+      const tenant = await testPrisma.tenant.create({
+        data: { name: "Dewi", id_number: `id-d-${Date.now()}`, email: "d@t.com" },
+      });
+      const booking = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tenant.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.guest.createMany({
+        data: [
+          { name: "Eka", email: "eka@g.com", phone: "0911", booking_id: booking.id },
+          { name: "Fajar", email: "fajar@g.com", phone: "0922", booking_id: booking.id },
+        ],
+      });
+      return { booking };
+    }
+
+    it("paginates and scopes guests to the location via booking→room", async () => {
+      await seedGuests();
+      const r = await getGuestsPage(1, baseParams);
+      expect(r.total).toBe(2);
+      const other = await getGuestsPage(99999, baseParams);
+      expect(other.total).toBe(0);
+    });
+
+    it("searches by guest name, email, phone, and room number", async () => {
+      await seedGuests();
+      expect((await getGuestsPage(1, { ...baseParams, search: "eka" })).total).toBe(1);
+      expect((await getGuestsPage(1, { ...baseParams, search: "fajar@g.com" })).total).toBe(1);
+      expect((await getGuestsPage(1, { ...baseParams, search: "0911" })).total).toBe(1);
+      expect((await getGuestsPage(1, { ...baseParams, search: "101" })).total).toBe(2); // both in room 101
+    });
+
+    it("sorts by name ascending and descending", async () => {
+      await seedGuests();
+      const asc = await getGuestsPage(1, { ...baseParams, sortBy: "name", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.name)).toEqual(["Eka", "Fajar"]);
+      const desc = await getGuestsPage(1, { ...baseParams, sortBy: "name", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.name)).toEqual(["Fajar", "Eka"]);
     });
   });
 });
