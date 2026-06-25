@@ -26,7 +26,12 @@ test.describe("smoke", () => {
       await page.goto(path);
       // Error boundary copy from the dashboard error.tsx — must NOT appear.
       await expect(page.getByText("Terjadi Kesalahan")).toHaveCount(0);
-      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+      // Scope to <main>: the header banner also renders an <h1> with the page
+      // title, so an unscoped heading match is a strict-mode violation when both
+      // are present.
+      await expect(
+        page.getByRole("main").getByRole("heading", { name: heading })
+      ).toBeVisible();
     });
   }
 });
