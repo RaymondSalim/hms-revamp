@@ -4,6 +4,7 @@ import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 import { getTodayTaskCounts } from "@/app/_db/today-tasks";
 import { getPaymentsPage } from "@/app/_db/payments";
 import { getBookingsPage } from "@/app/_db/bookings";
+import { getBillsPage } from "@/app/_db/bills";
 import { businessToday } from "@/app/_lib/util/business-time";
 
 const DAY = 86_400_000;
@@ -191,5 +192,72 @@ describe("getBookingsPage checkin/expiring filters", () => {
     const base = { page: 1, pageSize: 10, search: "", sortBy: null, sortDir: "desc" as const };
     const r = await getBookingsPage(1, base, { expiring: true });
     expect(r.total).toBe(1);
+  });
+});
+
+describe("getBillsPage overdue filter", () => {
+  const DAY = 86_400_000;
+  beforeEach(async () => {
+    await cleanDatabase();
+    await seedTestData();
+  });
+
+  let billCounter = 0;
+  async function bill(bookingId: number, dueOffsetDays: number, amount: number, paid: number, tag: string) {
+    const today = businessToday();
+    billCounter++;
+    const b = await testPrisma.bill.create({
+      data: {
+        booking_id: bookingId,
+        description: tag,
+        due_date: new Date(today.getTime() + dueOffsetDays * DAY + billCounter * 60000),
+        invoice_number: `INV-${tag}-${Date.now()}-${billCounter}`,
+      },
+    });
+    await testPrisma.billItem.create({ data: { bill_id: b.id, description: "Sewa", amount } });
+    if (paid > 0) {
+      const p = await testPrisma.payment.create({
+        data: { booking_id: bookingId, amount: paid, payment_date: today, payment_method: "CASH", status_id: 2 },
+      });
+      await testPrisma.paymentBill.create({ data: { payment_id: p.id, bill_id: b.id, amount: paid } });
+    }
+    return b;
+  }
+
+  it("returns only past-due bills with outstanding > 0, paginated", async () => {
+    billCounter = 0;
+    const t = await testPrisma.tenant.create({ data: { name: "O", id_number: `o-${Date.now()}`, email: "o@t.com" } });
+    const bk = await testPrisma.booking.create({
+      data: { room_id: 1, tenant_id: t.id, start_date: businessToday(), status_id: 2, fee: 1, is_rolling: true },
+    });
+    await bill(bk.id, -5, 500000, 0, "OD1");    // past-due, unpaid → in
+    await bill(bk.id, -3, 400000, 0, "OD2");    // past-due, unpaid → in
+    await bill(bk.id, -7, 300000, 300000, "PD"); // past-due, fully paid → out
+    await bill(bk.id, 5, 200000, 0, "FT");       // future-due → out
+
+    const base = { page: 1, pageSize: 10, search: "", sortBy: null, sortDir: "desc" as const };
+    const r = await getBillsPage(1, base, { overdue: true });
+    expect(r.total).toBe(2);
+
+    // pagination of the subset: pageSize 1 → 2 pages, disjoint
+    const p1 = await getBillsPage(1, { ...base, pageSize: 1, page: 1 }, { overdue: true });
+    const p2 = await getBillsPage(1, { ...base, pageSize: 1, page: 2 }, { overdue: true });
+    expect(p1.rows).toHaveLength(1);
+    expect(p2.rows).toHaveLength(1);
+    expect(p1.pageCount).toBe(2);
+    expect(p1.rows[0].id).not.toBe(p2.rows[0].id);
+  });
+
+  it("unfiltered getBillsPage still returns all non-deleted bills", async () => {
+    billCounter = 0;
+    const t = await testPrisma.tenant.create({ data: { name: "P", id_number: `p-${Date.now()}`, email: "p@t.com" } });
+    const bk = await testPrisma.booking.create({
+      data: { room_id: 1, tenant_id: t.id, start_date: businessToday(), status_id: 2, fee: 1, is_rolling: true },
+    });
+    await bill(bk.id, -5, 500000, 500000, "PAID");
+    await bill(bk.id, 5, 200000, 0, "FUT");
+    const base = { page: 1, pageSize: 10, search: "", sortBy: null, sortDir: "desc" as const };
+    const all = await getBillsPage(1, base);
+    expect(all.total).toBe(2); // overdue filter NOT applied
   });
 });
