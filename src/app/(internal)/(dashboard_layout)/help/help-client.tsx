@@ -110,6 +110,7 @@ const sections: HelpSection[] = [
       "T: Bagaimana menambah biaya tambahan (listrik, air)?\nJ: Buka halaman Tagihan, klik 'Edit' pada tagihan yang sesuai, lalu tambah item baru di bagian bawah modal.",
       "T: Zona waktu apa yang digunakan sistem?\nJ: Semua tanggal dan waktu menggunakan WIB (Waktu Indonesia Barat, UTC+7), terlepas dari lokasi akses Anda.",
       "T: Bagaimana cara melihat profil lengkap penyewa?\nJ: Klik nama penyewa di tabel Penyewa atau ikon detail (mata) di kolom Aksi. Halaman profil menampilkan ringkasan keuangan, daftar pemesanan, tagihan & pembayaran, serta catatan internal.",
+      "T: Bagaimana mencari atau mengurutkan data pada tabel?\nJ: Ketik di kotak pencarian untuk mencari ke seluruh data (bukan hanya halaman yang tampil), dan klik judul kolom untuk mengurutkan. Pencarian, urutan, dan halaman tersimpan di alamat (URL) sehingga bisa di-bookmark dan dibagikan.",
     ],
   },
 ];

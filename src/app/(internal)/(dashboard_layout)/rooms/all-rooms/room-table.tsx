@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { upsertRoomAction, deleteRoomAction } from "./room-action";
 import { useLocation } from "@/app/_context/location-context";
@@ -36,9 +36,16 @@ interface Props {
   rooms: RoomRow[];
   roomTypes: RoomTypeOption[];
   roomStatuses: RoomStatusOption[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
 }
 
-export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
+export function RoomTable({ rooms, roomTypes, roomStatuses, total, page, pageSize, pageCount, search, sortBy, sortDir }: Props) {
   const router = useRouter();
   const { selectedLocationId } = useLocation();
   const { can } = usePermissions();
@@ -142,7 +149,19 @@ export function RoomTable({ rooms, roomTypes, roomStatuses }: Props) {
         </button>
       </div>
 
-      <DataTable columns={columns} data={rooms} searchPlaceholder="Cari kamar..." />
+      <ServerDataTable
+        columns={columns}
+        data={rooms}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["room_number", "room_type", "status"]}
+        searchPlaceholder="Cari kamar..."
+      />
 
       {/* Create/Edit Modal */}
       <Modal

@@ -1,30 +1,54 @@
+import { getUtilitiesPage, UTILITY_SORT_KEYS } from "@/app/_db/utilities";
 import { prisma } from "@/app/_lib/prisma";
 import { checkPermission } from "@/app/_lib/rbac";
 import { AccessDenied } from "@/app/_components/access-denied";
+import { resolveLocationContext } from "@/app/_lib/util/location-scope";
 import { UtilityTable, type MeterReadingRow, type BookingOption } from "./utility-table";
 import { BOOKING_STATUS } from "@/app/_lib/util/status";
+import {
+  parseTableParams,
+  type RawSearchParams,
+} from "@/app/_lib/util/table-params";
 
-export default async function UtilitiesPage() {
+export default async function UtilitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
   const { authorized } = await checkPermission("bills.manage");
   if (!authorized) return <AccessDenied />;
+  const { selectedLocationId } = await resolveLocationContext();
+
+  if (!selectedLocationId) {
+    return (
+      <div className="text-center py-12">
+        <p style={{ color: "var(--color-text-secondary)" }}>
+          Tidak ada lokasi tersedia. Silakan tambahkan lokasi terlebih dahulu.
+        </p>
+      </div>
+    );
+  }
+
+  const params = parseTableParams(await searchParams, {
+    allowedSortKeys: UTILITY_SORT_KEYS,
+    defaultSortBy: "reading_date",
+    defaultSortDir: "desc",
+  });
 
   const [readings, bookings] = await Promise.all([
-    prisma.meterReading.findMany({
-      orderBy: { reading_date: "desc" },
-      include: {
-        booking: {
-          include: { tenants: true, rooms: true },
-        },
-      },
-    }),
+    getUtilitiesPage(selectedLocationId, params),
     prisma.booking.findMany({
-      where: { status_id: BOOKING_STATUS.ACTIVE, deletedAt: null },
+      where: {
+        status_id: BOOKING_STATUS.ACTIVE,
+        deletedAt: null,
+        rooms: { location_id: selectedLocationId },
+      },
       orderBy: { id: "desc" },
       include: { tenants: true, rooms: true },
     }),
   ]);
 
-  const rows: MeterReadingRow[] = readings.map((r) => ({
+  const rows: MeterReadingRow[] = readings.rows.map((r) => ({
     id: r.id,
     booking_id: r.booking_id,
     utility_type: r.utility_type,
@@ -43,5 +67,17 @@ export default async function UtilitiesPage() {
     room_number: b.rooms?.room_number ?? null,
   }));
 
-  return <UtilityTable readings={rows} bookings={bookingOptions} />;
+  return (
+    <UtilityTable
+      readings={rows}
+      bookings={bookingOptions}
+      total={readings.total}
+      page={readings.page}
+      pageSize={readings.pageSize}
+      pageCount={readings.pageCount}
+      search={params.search}
+      sortBy={params.sortBy}
+      sortDir={params.sortDir}
+    />
+  );
 }

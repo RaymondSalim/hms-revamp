@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { TenantForm } from "./tenant-form";
 import { deleteTenantAction } from "./tenant-action";
@@ -33,7 +33,29 @@ export interface TenantRow {
   second_resident_relation: string | null;
 }
 
-export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: string }) {
+interface TenantTableProps {
+  data: TenantRow[];
+  editTarget: TenantRow | null;
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
+}
+
+export function TenantTable({
+  data,
+  editTarget,
+  total,
+  page,
+  pageSize,
+  pageCount,
+  search,
+  sortBy,
+  sortDir,
+}: TenantTableProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantRow | null>(null);
@@ -42,14 +64,11 @@ export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: stri
   const canManage = can("tenants.manage");
 
   useEffect(() => {
-    if (editId) {
-      const tenant = data.find((t) => t.id === editId);
-      if (tenant) {
-        setEditingTenant(tenant);
-        setIsModalOpen(true);
-      }
+    if (editTarget) {
+      setEditingTenant(editTarget);
+      setIsModalOpen(true);
     }
-  }, [editId, data]);
+  }, [editTarget]);
 
   const handleEdit = (tenant: TenantRow) => {
     setEditingTenant(tenant);
@@ -150,9 +169,17 @@ export function TenantTable({ data, editId }: { data: TenantRow[]; editId?: stri
         </button>
       </div>
 
-      <DataTable
+      <ServerDataTable
         columns={columns}
         data={data}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["name", "email", "phone", "id_number"]}
         searchPlaceholder="Cari penghuni..."
       />
 

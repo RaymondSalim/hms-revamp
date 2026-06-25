@@ -5,6 +5,12 @@ import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 import { getBillsPage } from "@/app/_db/bills";
 import { getPaymentsPage } from "@/app/_db/payments";
 import { getBookingsPage } from "@/app/_db/bookings";
+import { getRoomsPage } from "@/app/_db/rooms";
+import { getAddonsPage } from "@/app/_db/addons";
+import { getTenantsPage } from "@/app/_db/tenant";
+import { getGuestsPage } from "@/app/_db/guests";
+import { getDepositsPage } from "@/app/_db/deposits";
+import { getUtilitiesPage } from "@/app/_db/utilities";
 import type { TableParams } from "@/app/_lib/util/table-params";
 
 const baseParams: TableParams = {
@@ -212,6 +218,271 @@ describe("server-side table pagination", () => {
       });
       const page = await getBookingsPage(1, baseParams);
       expect(page.total).toBe(0);
+    });
+  });
+
+  describe("getRoomsPage", () => {
+    it("paginates and reports total/pageCount for the location", async () => {
+      // seedTestData seeds 2 rooms (101, 102) in location 1.
+      const p1 = await getRoomsPage(1, { ...baseParams, pageSize: 1, page: 1 });
+      expect(p1.rows).toHaveLength(1);
+      expect(p1.total).toBe(2);
+      expect(p1.pageCount).toBe(2);
+    });
+
+    it("does not overlap rows across pages (stable id tiebreaker)", async () => {
+      const p1 = await getRoomsPage(1, { ...baseParams, pageSize: 1, page: 1 });
+      const p2 = await getRoomsPage(1, { ...baseParams, pageSize: 1, page: 2 });
+      expect(p1.rows[0].id).not.toBe(p2.rows[0].id);
+    });
+
+    it("searches by room number", async () => {
+      const r = await getRoomsPage(1, { ...baseParams, search: "101" });
+      expect(r.total).toBe(1);
+      expect(r.rows[0].room_number).toBe("101");
+    });
+
+    it("searches by room type name", async () => {
+      const r = await getRoomsPage(1, { ...baseParams, search: "standard" });
+      expect(r.total).toBe(2);
+    });
+
+    it("sorts by room_number ascending and descending", async () => {
+      const asc = await getRoomsPage(1, { ...baseParams, sortBy: "room_number", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.room_number)).toEqual(["101", "102"]);
+      const desc = await getRoomsPage(1, { ...baseParams, sortBy: "room_number", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.room_number)).toEqual(["102", "101"]);
+    });
+
+    it("scopes results to the requested location", async () => {
+      const other = await getRoomsPage(99999, baseParams);
+      expect(other.total).toBe(0);
+    });
+
+    it("falls back to default sort for an unknown sortBy", async () => {
+      const r = await getRoomsPage(1, { ...baseParams, sortBy: "nonexistent" });
+      expect(r.total).toBe(2); // does not throw
+    });
+  });
+
+  describe("getAddonsPage", () => {
+    beforeEach(async () => {
+      // seedTestData has run; add addons in location 1.
+      // Create location 2 for cross-location scoping test
+      await testPrisma.location.create({
+        data: { id: 2, name: "Location 2", address: "Jl. Test 456" },
+      });
+      await testPrisma.addOn.createMany({
+        data: [
+          { id: "a1", name: "Laundry", description: "Cuci setrika", location_id: 1, requires_input: false },
+          { id: "a2", name: "Parkir", description: "Parkir motor", location_id: 1, requires_input: false },
+          { id: "a3", name: "WiFi", description: "Internet cepat", location_id: 2, requires_input: false },
+        ],
+      });
+    });
+
+    it("paginates and scopes to the location", async () => {
+      const r = await getAddonsPage(1, baseParams);
+      expect(r.total).toBe(2); // a1, a2 in location 1; a3 is location 2
+    });
+
+    it("searches by name and description", async () => {
+      const byName = await getAddonsPage(1, { ...baseParams, search: "laundry" });
+      expect(byName.total).toBe(1);
+      const byDesc = await getAddonsPage(1, { ...baseParams, search: "parkir motor" });
+      expect(byDesc.total).toBe(1);
+    });
+
+    it("sorts by name ascending and descending", async () => {
+      const asc = await getAddonsPage(1, { ...baseParams, sortBy: "name", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.name)).toEqual(["Laundry", "Parkir"]);
+      const desc = await getAddonsPage(1, { ...baseParams, sortBy: "name", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.name)).toEqual(["Parkir", "Laundry"]);
+    });
+  });
+
+  describe("getTenantsPage", () => {
+    beforeEach(async () => {
+      await testPrisma.tenant.createMany({
+        data: [
+          { name: "Ahmad", id_number: "t-ahmad", email: "ahmad@x.com", phone: "0811" },
+          { name: "Bayu", id_number: "t-bayu", email: "bayu@x.com", phone: "0822" },
+          { name: "Cipto", id_number: "t-cipto", email: "cipto@x.com", phone: "0833" },
+        ],
+      });
+    });
+
+    it("paginates across the full (global) tenant set", async () => {
+      const p1 = await getTenantsPage({ ...baseParams, pageSize: 2, page: 1 });
+      expect(p1.rows).toHaveLength(2);
+      expect(p1.total).toBe(3);
+      expect(p1.pageCount).toBe(2);
+    });
+
+    it("searches by name, email, phone, and id_number", async () => {
+      expect((await getTenantsPage({ ...baseParams, search: "bayu" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "cipto@x.com" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "0811" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "t-ahmad" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "zzz" })).total).toBe(0);
+    });
+
+    it("sorts by name ascending and descending", async () => {
+      const asc = await getTenantsPage({ ...baseParams, sortBy: "name", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.name)).toEqual(["Ahmad", "Bayu", "Cipto"]);
+      const desc = await getTenantsPage({ ...baseParams, sortBy: "name", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.name)).toEqual(["Cipto", "Bayu", "Ahmad"]);
+    });
+  });
+
+  describe("getGuestsPage", () => {
+    async function seedGuests() {
+      const tenant = await testPrisma.tenant.create({
+        data: { name: "Dewi", id_number: `id-d-${Date.now()}`, email: "d@t.com" },
+      });
+      const booking = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tenant.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.guest.createMany({
+        data: [
+          { name: "Eka", email: "eka@g.com", phone: "0911", booking_id: booking.id },
+          { name: "Fajar", email: "fajar@g.com", phone: "0922", booking_id: booking.id },
+        ],
+      });
+      return { booking };
+    }
+
+    it("paginates and scopes guests to the location via booking→room", async () => {
+      await seedGuests();
+      const r = await getGuestsPage(1, baseParams);
+      expect(r.total).toBe(2);
+      const other = await getGuestsPage(99999, baseParams);
+      expect(other.total).toBe(0);
+    });
+
+    it("searches by guest name, email, phone, and room number", async () => {
+      await seedGuests();
+      expect((await getGuestsPage(1, { ...baseParams, search: "eka" })).total).toBe(1);
+      expect((await getGuestsPage(1, { ...baseParams, search: "fajar@g.com" })).total).toBe(1);
+      expect((await getGuestsPage(1, { ...baseParams, search: "0911" })).total).toBe(1);
+      expect((await getGuestsPage(1, { ...baseParams, search: "101" })).total).toBe(2); // both in room 101
+    });
+
+    it("sorts by name ascending and descending", async () => {
+      await seedGuests();
+      const asc = await getGuestsPage(1, { ...baseParams, sortBy: "name", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.name)).toEqual(["Eka", "Fajar"]);
+      const desc = await getGuestsPage(1, { ...baseParams, sortBy: "name", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.name)).toEqual(["Fajar", "Eka"]);
+    });
+  });
+
+  describe("getDepositsPage", () => {
+    async function seedDeposits() {
+      const t1 = await testPrisma.tenant.create({
+        data: { name: "Gita", id_number: `id-g-${Date.now()}`, email: "g@t.com" },
+      });
+      const t2 = await testPrisma.tenant.create({
+        data: { name: "Hadi", id_number: `id-h-${Date.now()}`, email: "h@t.com" },
+      });
+      const b1 = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: t1.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      const b2 = await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: t2.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.deposit.create({ data: { booking_id: b1.id, amount: 500000, status: "HELD" } });
+      await testPrisma.deposit.create({ data: { booking_id: b2.id, amount: 700000, status: "UNPAID" } });
+    }
+
+    it("paginates and scopes deposits to the location via booking→room", async () => {
+      await seedDeposits();
+      expect((await getDepositsPage(1, baseParams)).total).toBe(2);
+      expect((await getDepositsPage(99999, baseParams)).total).toBe(0);
+    });
+
+    it("searches by tenant name and room number", async () => {
+      await seedDeposits();
+      expect((await getDepositsPage(1, { ...baseParams, search: "gita" })).total).toBe(1);
+      expect((await getDepositsPage(1, { ...baseParams, search: "102" })).total).toBe(1);
+    });
+
+    it("sorts by amount ascending and descending", async () => {
+      await seedDeposits();
+      const asc = await getDepositsPage(1, { ...baseParams, sortBy: "amount", sortDir: "asc" });
+      expect(asc.rows.map((r) => Number(r.amount))).toEqual([500000, 700000]);
+      const desc = await getDepositsPage(1, { ...baseParams, sortBy: "amount", sortDir: "desc" });
+      expect(desc.rows.map((r) => Number(r.amount))).toEqual([700000, 500000]);
+    });
+
+    it("sorts by tenant name (relation)", async () => {
+      await seedDeposits();
+      const asc = await getDepositsPage(1, { ...baseParams, sortBy: "tenant", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.booking.tenants?.name)).toEqual(["Gita", "Hadi"]);
+    });
+  });
+
+  describe("getUtilitiesPage", () => {
+    async function seedReadings() {
+      // Location 1 already exists with rooms 1 (101) and 2 (102). Add location 2 + a room.
+      await testPrisma.location.create({ data: { id: 2, name: "Loc 2", address: "Jl. Dua" } });
+      await testPrisma.room.create({
+        data: { id: 3, room_number: "201", room_type_id: 1, status_id: 1, location_id: 2 },
+      });
+      const tLoc1 = await testPrisma.tenant.create({
+        data: { name: "Indra", id_number: `id-i-${Date.now()}`, email: "i@t.com" },
+      });
+      const tLoc2 = await testPrisma.tenant.create({
+        data: { name: "Joko", id_number: `id-j-${Date.now()}`, email: "j@t.com" },
+      });
+      const bLoc1 = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tLoc1.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      const bLoc2 = await testPrisma.booking.create({
+        data: { room_id: 3, tenant_id: tLoc2.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.meterReading.create({
+        data: { booking_id: bLoc1.id, utility_type: "electricity", reading_date: new Date("2025-01-10"), reading_value: 100, rate_per_unit: 1500 },
+      });
+      await testPrisma.meterReading.create({
+        data: { booking_id: bLoc2.id, utility_type: "water", reading_date: new Date("2025-01-12"), reading_value: 50, rate_per_unit: 2000 },
+      });
+    }
+
+    it("scopes readings to the selected location (closes the cross-location leak)", async () => {
+      await seedReadings();
+      const loc1 = await getUtilitiesPage(1, baseParams);
+      expect(loc1.total).toBe(1);
+      expect(loc1.rows[0].booking.tenants?.name).toBe("Indra");
+
+      const loc2 = await getUtilitiesPage(2, baseParams);
+      expect(loc2.total).toBe(1);
+      expect(loc2.rows[0].booking.tenants?.name).toBe("Joko");
+    });
+
+    it("searches by tenant name and room number within the location", async () => {
+      await seedReadings();
+      expect((await getUtilitiesPage(1, { ...baseParams, search: "indra" })).total).toBe(1);
+      expect((await getUtilitiesPage(1, { ...baseParams, search: "101" })).total).toBe(1);
+      expect((await getUtilitiesPage(1, { ...baseParams, search: "joko" })).total).toBe(0); // other location
+    });
+
+    it("sorts by reading_value ascending and descending within the location", async () => {
+      await seedReadings();
+      // Add a second reading in location 1 to have something to order.
+      const tenant = await testPrisma.tenant.create({
+        data: { name: "Kiki", id_number: `id-k-${Date.now()}`, email: "k@t.com" },
+      });
+      const b = await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: tenant.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.meterReading.create({
+        data: { booking_id: b.id, utility_type: "electricity", reading_date: new Date("2025-01-15"), reading_value: 300, rate_per_unit: 1500 },
+      });
+      const asc = await getUtilitiesPage(1, { ...baseParams, sortBy: "reading_value", sortDir: "asc" });
+      expect(asc.rows.map((r) => Number(r.reading_value))).toEqual([100, 300]);
+      const desc = await getUtilitiesPage(1, { ...baseParams, sortBy: "reading_value", sortDir: "desc" });
+      expect(desc.rows.map((r) => Number(r.reading_value))).toEqual([300, 100]);
     });
   });
 });

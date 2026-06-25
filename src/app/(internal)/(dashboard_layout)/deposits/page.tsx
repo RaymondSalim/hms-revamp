@@ -1,11 +1,19 @@
-import { prisma } from "@/app/_lib/prisma";
+import { getDepositsPage, DEPOSIT_SORT_KEYS } from "@/app/_db/deposits";
 import { serializeForClient } from "@/app/_lib/util/serialize";
 import { resolveLocationContext } from "@/app/_lib/util/location-scope";
 import { DepositTable } from "./deposit-table";
 import { checkPermission } from "@/app/_lib/rbac";
 import { AccessDenied } from "@/app/_components/access-denied";
+import {
+  parseTableParams,
+  type RawSearchParams,
+} from "@/app/_lib/util/table-params";
 
-export default async function DepositsPage() {
+export default async function DepositsPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
   const { authorized } = await checkPermission("deposits.view");
   if (!authorized) return <AccessDenied />;
   const { selectedLocationId } = await resolveLocationContext();
@@ -20,22 +28,24 @@ export default async function DepositsPage() {
     );
   }
 
-  const deposits = await prisma.deposit.findMany({
-    where: {
-      booking: {
-        rooms: { location_id: selectedLocationId },
-      },
-    },
-    include: {
-      booking: {
-        include: {
-          tenants: true,
-          rooms: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
+  const params = parseTableParams(await searchParams, {
+    allowedSortKeys: DEPOSIT_SORT_KEYS,
+    defaultSortBy: "created",
+    defaultSortDir: "desc",
   });
 
-  return <DepositTable deposits={serializeForClient(deposits) as never} />;
+  const deposits = await getDepositsPage(selectedLocationId, params);
+
+  return (
+    <DepositTable
+      deposits={serializeForClient(deposits.rows) as never}
+      total={deposits.total}
+      page={deposits.page}
+      pageSize={deposits.pageSize}
+      pageCount={deposits.pageCount}
+      search={params.search}
+      sortBy={params.sortBy}
+      sortDir={params.sortDir}
+    />
+  );
 }

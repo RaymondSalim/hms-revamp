@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import {
   updateDepositStatusAction,
@@ -60,7 +60,18 @@ function StatusBadge({ status }: { status: DepositStatus }) {
   );
 }
 
-export function DepositTable({ deposits }: { deposits: Deposit[] }) {
+interface Props {
+  deposits: Deposit[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
+}
+
+export function DepositTable({ deposits, total, page, pageSize, pageCount, search, sortBy, sortDir }: Props) {
   const [statusModalDeposit, setStatusModalDeposit] = useState<Deposit | null>(
     null,
   );
@@ -73,6 +84,7 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
 
   const columns: ColumnDef<Deposit, unknown>[] = [
     {
+      id: "tenant",
       accessorKey: "booking",
       header: "Pemesanan",
       cell: ({ row }) => {
@@ -98,11 +110,13 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
       },
     },
     {
+      id: "amount",
       accessorKey: "amount",
       header: "Jumlah",
       cell: ({ row }) => formatCurrency(row.original.amount),
     },
     {
+      id: "status",
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
@@ -110,12 +124,14 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
     {
       accessorKey: "refunded_amount",
       header: "Jumlah Refund",
+      enableSorting: false,
       cell: ({ row }) =>
         row.original.refunded_amount
           ? formatCurrency(row.original.refunded_amount)
           : "-",
     },
     {
+      id: "created",
       accessorKey: "applied_at",
       header: "Diterapkan",
       cell: ({ row }) =>
@@ -155,10 +171,18 @@ export function DepositTable({ deposits }: { deposits: Deposit[] }) {
         </h1>
       </div>
 
-      <DataTable
+      <ServerDataTable
         columns={columns}
         data={deposits}
-        searchPlaceholder="Cari deposit..."
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["created", "amount", "status", "tenant"]}
+        searchPlaceholder="Cari penyewa atau kamar..."
       />
 
       {statusModalDeposit && (

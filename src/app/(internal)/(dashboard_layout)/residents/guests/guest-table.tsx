@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { GuestForm } from "./guest-form";
 import { deleteGuestAction, deleteGuestStayAction } from "./guest-action";
@@ -41,7 +41,27 @@ export interface BookingOption {
   tenants: { id: string; name: string } | null;
 }
 
-export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: BookingOption[] }) {
+export function GuestTable({
+  data,
+  bookings,
+  total,
+  page,
+  pageSize,
+  pageCount,
+  search,
+  sortBy,
+  sortDir,
+}: {
+  data: GuestRow[];
+  bookings: BookingOption[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
+}) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<GuestRow | null>(null);
@@ -88,7 +108,7 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
       header: "Nama Tamu",
     },
     {
-      id: "booking",
+      id: "room",
       header: "Booking (Kamar)",
       cell: ({ row }) => {
         const room = row.original.booking?.rooms;
@@ -177,10 +197,18 @@ export function GuestTable({ data, bookings }: { data: GuestRow[]; bookings: Boo
         </button>
       </div>
 
-      <DataTable
+      <ServerDataTable
         columns={columns}
         data={data}
         searchPlaceholder="Cari tamu..."
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["name", "email", "phone", "room"]}
       />
 
       {/* Guest Stay Detail Modal */}
