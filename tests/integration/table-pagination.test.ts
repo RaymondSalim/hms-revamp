@@ -5,6 +5,7 @@ import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 import { getBillsPage } from "@/app/_db/bills";
 import { getPaymentsPage } from "@/app/_db/payments";
 import { getBookingsPage } from "@/app/_db/bookings";
+import { getRoomsPage } from "@/app/_db/rooms";
 import type { TableParams } from "@/app/_lib/util/table-params";
 
 const baseParams: TableParams = {
@@ -212,6 +213,50 @@ describe("server-side table pagination", () => {
       });
       const page = await getBookingsPage(1, baseParams);
       expect(page.total).toBe(0);
+    });
+  });
+
+  describe("getRoomsPage", () => {
+    it("paginates and reports total/pageCount for the location", async () => {
+      // seedTestData seeds 2 rooms (101, 102) in location 1.
+      const p1 = await getRoomsPage(1, { ...baseParams, pageSize: 1, page: 1 });
+      expect(p1.rows).toHaveLength(1);
+      expect(p1.total).toBe(2);
+      expect(p1.pageCount).toBe(2);
+    });
+
+    it("does not overlap rows across pages (stable id tiebreaker)", async () => {
+      const p1 = await getRoomsPage(1, { ...baseParams, pageSize: 1, page: 1 });
+      const p2 = await getRoomsPage(1, { ...baseParams, pageSize: 1, page: 2 });
+      expect(p1.rows[0].id).not.toBe(p2.rows[0].id);
+    });
+
+    it("searches by room number", async () => {
+      const r = await getRoomsPage(1, { ...baseParams, search: "101" });
+      expect(r.total).toBe(1);
+      expect(r.rows[0].room_number).toBe("101");
+    });
+
+    it("searches by room type name", async () => {
+      const r = await getRoomsPage(1, { ...baseParams, search: "standard" });
+      expect(r.total).toBe(2);
+    });
+
+    it("sorts by room_number ascending and descending", async () => {
+      const asc = await getRoomsPage(1, { ...baseParams, sortBy: "room_number", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.room_number)).toEqual(["101", "102"]);
+      const desc = await getRoomsPage(1, { ...baseParams, sortBy: "room_number", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.room_number)).toEqual(["102", "101"]);
+    });
+
+    it("scopes results to the requested location", async () => {
+      const other = await getRoomsPage(99999, baseParams);
+      expect(other.total).toBe(0);
+    });
+
+    it("falls back to default sort for an unknown sortBy", async () => {
+      const r = await getRoomsPage(1, { ...baseParams, sortBy: "nonexistent" });
+      expect(r.total).toBe(2); // does not throw
     });
   });
 });
