@@ -9,6 +9,7 @@ import { getRoomsPage } from "@/app/_db/rooms";
 import { getAddonsPage } from "@/app/_db/addons";
 import { getTenantsPage } from "@/app/_db/tenant";
 import { getGuestsPage } from "@/app/_db/guests";
+import { getDepositsPage } from "@/app/_db/deposits";
 import type { TableParams } from "@/app/_lib/util/table-params";
 
 const baseParams: TableParams = {
@@ -372,6 +373,51 @@ describe("server-side table pagination", () => {
       expect(asc.rows.map((r) => r.name)).toEqual(["Eka", "Fajar"]);
       const desc = await getGuestsPage(1, { ...baseParams, sortBy: "name", sortDir: "desc" });
       expect(desc.rows.map((r) => r.name)).toEqual(["Fajar", "Eka"]);
+    });
+  });
+
+  describe("getDepositsPage", () => {
+    async function seedDeposits() {
+      const t1 = await testPrisma.tenant.create({
+        data: { name: "Gita", id_number: `id-g-${Date.now()}`, email: "g@t.com" },
+      });
+      const t2 = await testPrisma.tenant.create({
+        data: { name: "Hadi", id_number: `id-h-${Date.now()}`, email: "h@t.com" },
+      });
+      const b1 = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: t1.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      const b2 = await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: t2.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.deposit.create({ data: { booking_id: b1.id, amount: 500000, status: "HELD" } });
+      await testPrisma.deposit.create({ data: { booking_id: b2.id, amount: 700000, status: "UNPAID" } });
+    }
+
+    it("paginates and scopes deposits to the location via booking→room", async () => {
+      await seedDeposits();
+      expect((await getDepositsPage(1, baseParams)).total).toBe(2);
+      expect((await getDepositsPage(99999, baseParams)).total).toBe(0);
+    });
+
+    it("searches by tenant name and room number", async () => {
+      await seedDeposits();
+      expect((await getDepositsPage(1, { ...baseParams, search: "gita" })).total).toBe(1);
+      expect((await getDepositsPage(1, { ...baseParams, search: "102" })).total).toBe(1);
+    });
+
+    it("sorts by amount ascending and descending", async () => {
+      await seedDeposits();
+      const asc = await getDepositsPage(1, { ...baseParams, sortBy: "amount", sortDir: "asc" });
+      expect(asc.rows.map((r) => Number(r.amount))).toEqual([500000, 700000]);
+      const desc = await getDepositsPage(1, { ...baseParams, sortBy: "amount", sortDir: "desc" });
+      expect(desc.rows.map((r) => Number(r.amount))).toEqual([700000, 500000]);
+    });
+
+    it("sorts by tenant name (relation)", async () => {
+      await seedDeposits();
+      const asc = await getDepositsPage(1, { ...baseParams, sortBy: "tenant", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.booking.tenants?.name)).toEqual(["Gita", "Hadi"]);
     });
   });
 });
