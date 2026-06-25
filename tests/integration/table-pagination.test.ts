@@ -6,6 +6,7 @@ import { getBillsPage } from "@/app/_db/bills";
 import { getPaymentsPage } from "@/app/_db/payments";
 import { getBookingsPage } from "@/app/_db/bookings";
 import { getRoomsPage } from "@/app/_db/rooms";
+import { getAddonsPage } from "@/app/_db/addons";
 import type { TableParams } from "@/app/_lib/util/table-params";
 
 const baseParams: TableParams = {
@@ -257,6 +258,42 @@ describe("server-side table pagination", () => {
     it("falls back to default sort for an unknown sortBy", async () => {
       const r = await getRoomsPage(1, { ...baseParams, sortBy: "nonexistent" });
       expect(r.total).toBe(2); // does not throw
+    });
+  });
+
+  describe("getAddonsPage", () => {
+    beforeEach(async () => {
+      // seedTestData has run; add addons in location 1.
+      // Create location 2 for cross-location scoping test
+      await testPrisma.location.create({
+        data: { id: 2, name: "Location 2", address: "Jl. Test 456" },
+      });
+      await testPrisma.addOn.createMany({
+        data: [
+          { id: "a1", name: "Laundry", description: "Cuci setrika", location_id: 1, requires_input: false },
+          { id: "a2", name: "Parkir", description: "Parkir motor", location_id: 1, requires_input: false },
+          { id: "a3", name: "WiFi", description: "Internet cepat", location_id: 2, requires_input: false },
+        ],
+      });
+    });
+
+    it("paginates and scopes to the location", async () => {
+      const r = await getAddonsPage(1, baseParams);
+      expect(r.total).toBe(2); // a1, a2 in location 1; a3 is location 2
+    });
+
+    it("searches by name and description", async () => {
+      const byName = await getAddonsPage(1, { ...baseParams, search: "laundry" });
+      expect(byName.total).toBe(1);
+      const byDesc = await getAddonsPage(1, { ...baseParams, search: "parkir motor" });
+      expect(byDesc.total).toBe(1);
+    });
+
+    it("sorts by name ascending and descending", async () => {
+      const asc = await getAddonsPage(1, { ...baseParams, sortBy: "name", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.name)).toEqual(["Laundry", "Parkir"]);
+      const desc = await getAddonsPage(1, { ...baseParams, sortBy: "name", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.name)).toEqual(["Parkir", "Laundry"]);
     });
   });
 });

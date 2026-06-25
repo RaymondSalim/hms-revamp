@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/app/_components/data-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { AddonForm } from "./addon-form";
 import { upsertAddonAction, deleteAddonAction } from "./addons-action";
@@ -35,9 +35,16 @@ interface AddonRow {
 interface Props {
   addons: AddonRow[];
   locationId: number;
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
 }
 
-export function AddonTable({ addons, locationId }: Props) {
+export function AddonTable({ addons, locationId, total, page, pageSize, pageCount, search, sortBy, sortDir }: Props) {
   const router = useRouter();
   const { can } = usePermissions();
   const canManage = can("addons.manage");
@@ -174,7 +181,19 @@ export function AddonTable({ addons, locationId }: Props) {
         </button>
       </div>
 
-      <DataTable columns={columns} data={addons} searchPlaceholder="Cari add-on..." />
+      <ServerDataTable
+        columns={columns}
+        data={addons}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["name", "description"]}
+        searchPlaceholder="Cari add-on..."
+      />
 
       {/* Create/Edit Modal */}
       <Modal
