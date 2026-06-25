@@ -7,6 +7,7 @@ import {
   type TableParams,
   type Paginated,
 } from "@/app/_lib/util/table-params";
+import { PAYMENT_STATUS } from "@/app/_lib/util/status";
 
 const paymentWithRelations = {
   include: {
@@ -26,6 +27,10 @@ export const PAYMENT_SORT_KEYS = [
   "booking",
   "status",
 ] as const;
+
+export interface PaymentFilter {
+  status?: "pending";
+}
 
 /** Map a free-text search term to a PaymentMethod enum value, if it names one. */
 function matchPaymentMethod(search: string): PaymentMethod | null {
@@ -55,7 +60,8 @@ function paymentOrderBy(
  */
 export async function getPaymentsPage(
   locationId: number,
-  params: TableParams
+  params: TableParams,
+  opts: PaymentFilter = {}
 ): Promise<Paginated<PaymentWithRelations>> {
   const search = params.search;
   // payment_method is an enum, not free text, so match it only when the search
@@ -64,6 +70,7 @@ export async function getPaymentsPage(
   const where: Prisma.PaymentWhereInput = {
     deletedAt: null,
     bookings: { rooms: { location_id: locationId } },
+    ...(opts.status === "pending" ? { status_id: PAYMENT_STATUS.PENDING } : {}),
     ...(search
       ? {
           OR: [

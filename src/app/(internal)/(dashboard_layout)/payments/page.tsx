@@ -29,13 +29,18 @@ export default async function PaymentsPage({
     );
   }
 
-  const params = parseTableParams(await searchParams, {
+  const sp = await searchParams;
+  const params = parseTableParams(sp, {
     allowedSortKeys: PAYMENT_SORT_KEYS,
     defaultSortBy: "payment_date",
     defaultSortDir: "desc",
   });
 
-  const payments = await getPaymentsPage(selectedLocationId, params);
+  const statusParam = (Array.isArray(sp.status) ? sp.status[0] : sp.status) === "pending"
+    ? ("pending" as const)
+    : undefined;
+
+  const payments = await getPaymentsPage(selectedLocationId, params, { status: statusParam });
 
   const paymentStatuses = await prisma.paymentStatus.findMany({
     orderBy: { id: "asc" },

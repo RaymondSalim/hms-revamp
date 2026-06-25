@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import "../helpers/mock-next";
 import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 import { getTodayTaskCounts } from "@/app/_db/today-tasks";
+import { getPaymentsPage } from "@/app/_db/payments";
 import { businessToday } from "@/app/_lib/util/business-time";
 
 const DAY = 86_400_000;
@@ -118,5 +119,35 @@ describe("getTodayTaskCounts", () => {
   it("scopes all counts to the requested location", async () => {
     const counts = await getTodayTaskCounts(99999);
     expect(counts).toEqual({ checkInsDue: 0, unverifiedPayments: 0, overdueBills: 0, expiringBookings: 0 });
+  });
+});
+
+describe("getPaymentsPage status filter", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+    await seedTestData();
+  });
+
+  it("returns only PENDING payments when status='pending'", async () => {
+    const t = await testPrisma.tenant.create({
+      data: { name: "Joko", id_number: `id-j-${Date.now()}`, email: "j@t.com" },
+    });
+    const b = await testPrisma.booking.create({
+      data: { room_id: 1, tenant_id: t.id, start_date: businessToday(), status_id: 2, fee: 1, is_rolling: true },
+    });
+    await testPrisma.payment.create({
+      data: { booking_id: b.id, amount: 100, payment_date: businessToday(), payment_method: "CASH", status_id: 1 },
+    });
+    await testPrisma.payment.create({
+      data: { booking_id: b.id, amount: 200, payment_date: businessToday(), payment_method: "CASH", status_id: 2 },
+    });
+
+    const base = { page: 1, pageSize: 10, search: "", sortBy: null, sortDir: "desc" as const };
+    const pending = await getPaymentsPage(1, base, { status: "pending" });
+    expect(pending.total).toBe(1);
+    expect(pending.rows[0].status_id).toBe(1);
+
+    const all = await getPaymentsPage(1, base);
+    expect(all.total).toBe(2);
   });
 });
