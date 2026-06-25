@@ -353,7 +353,7 @@ export function BookingTable({
         search={search}
         sortBy={sortBy}
         sortDir={sortDir}
-        sortableColumns={["start_date", "end_date", "fee"]}
+        sortableColumns={["start_date", "end_date", "fee", "room", "tenant", "status"]}
         searchPlaceholder="Cari pemesanan..."
       />
 

@@ -219,6 +219,79 @@ describe("server-side table pagination", () => {
       const page = await getBookingsPage(1, baseParams);
       expect(page.total).toBe(0);
     });
+
+    it("sorts by tenant name (relation) asc and desc", async () => {
+      const tZ = await testPrisma.tenant.create({
+        data: { name: "Zulkifli", id_number: `id-z-${Date.now()}`, email: "z@t.com" },
+      });
+      const tA = await testPrisma.tenant.create({
+        data: { name: "Anwar", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      // Zulkifli in room 101, Anwar in room 102 — name order is the reverse of room order.
+      await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tZ.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: tA.id, start_date: new Date("2025-02-01"), fee: 1, is_rolling: true },
+      });
+
+      const asc = await getBookingsPage(1, { ...baseParams, sortBy: "tenant", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.tenants?.name)).toEqual(["Anwar", "Zulkifli"]);
+
+      const desc = await getBookingsPage(1, { ...baseParams, sortBy: "tenant", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.tenants?.name)).toEqual(["Zulkifli", "Anwar"]);
+    });
+
+    it("sorts by room number (relation) asc and desc", async () => {
+      const tZ = await testPrisma.tenant.create({
+        data: { name: "Zulkifli", id_number: `id-z-${Date.now()}`, email: "z@t.com" },
+      });
+      const tA = await testPrisma.tenant.create({
+        data: { name: "Anwar", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tZ.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: tA.id, start_date: new Date("2025-02-01"), fee: 1, is_rolling: true },
+      });
+
+      const asc = await getBookingsPage(1, { ...baseParams, sortBy: "room", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.rooms?.room_number)).toEqual(["101", "102"]);
+
+      const desc = await getBookingsPage(1, { ...baseParams, sortBy: "room", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.rooms?.room_number)).toEqual(["102", "101"]);
+    });
+
+    it("sorts by status (relation) asc", async () => {
+      const t1 = await testPrisma.tenant.create({
+        data: { name: "Andi", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      const t2 = await testPrisma.tenant.create({
+        data: { name: "Budi", id_number: `id-b-${Date.now()}`, email: "b@t.com" },
+      });
+      // status 2 = ACTIVE, status 1 = PENDING. asc by the status STRING: ACTIVE < PENDING.
+      await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: t1.id, status_id: 1, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: t2.id, status_id: 2, start_date: new Date("2025-02-01"), fee: 1, is_rolling: true },
+      });
+
+      const asc = await getBookingsPage(1, { ...baseParams, sortBy: "status", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.bookingstatuses?.status)).toEqual(["ACTIVE", "PENDING"]);
+    });
+
+    it("falls back to default sort for an unknown sortBy (no throw)", async () => {
+      const t = await testPrisma.tenant.create({
+        data: { name: "Andi", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: t.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      const r = await getBookingsPage(1, { ...baseParams, sortBy: "not_a_column" });
+      expect(r.total).toBe(1);
+    });
   });
 
   describe("getRoomsPage", () => {

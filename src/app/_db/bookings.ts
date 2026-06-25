@@ -39,13 +39,33 @@ export type BookingListRow = Prisma.BookingGetPayload<{
   include: typeof bookingListInclude;
 }>;
 
-/** DB-backed columns the bookings table may sort by. */
+/** DB-backed columns the bookings table may sort by (scalar + to-one relations). */
 export const BOOKING_SORT_KEYS = [
   "start_date",
   "end_date",
   "fee",
   "createdAt",
+  "room",
+  "tenant",
+  "status",
 ] as const;
+
+function bookingOrderBy(
+  sortBy: string | null,
+  dir: Prisma.SortOrder
+): Prisma.BookingOrderByWithRelationInput[] {
+  const map: Record<string, Prisma.BookingOrderByWithRelationInput> = {
+    start_date: { start_date: dir },
+    end_date: { end_date: dir },
+    fee: { fee: dir },
+    createdAt: { createdAt: dir },
+    room: { rooms: { room_number: dir } },
+    tenant: { tenants: { name: dir } },
+    status: { bookingstatuses: { status: dir } },
+  };
+  const primary = map[sortBy ?? "createdAt"] ?? map.createdAt;
+  return [primary, { id: dir }];
+}
 
 /**
  * Paginated, searchable, sortable bookings for one location. Search matches
@@ -73,18 +93,12 @@ export async function getBookingsPage(
       : {}),
   };
 
-  const sortKey = (params.sortBy ??
-    "createdAt") as (typeof BOOKING_SORT_KEYS)[number];
-  const orderBy: Prisma.BookingOrderByWithRelationInput = {
-    [sortKey]: params.sortDir,
-  };
-
   const { skip, take } = toSkipTake(params);
   const [rows, total] = await Promise.all([
     prisma.booking.findMany({
       where,
       include: bookingListInclude,
-      orderBy,
+      orderBy: bookingOrderBy(params.sortBy, params.sortDir),
       skip,
       take,
     }),
