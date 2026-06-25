@@ -3,6 +3,7 @@ import "../helpers/mock-next";
 import { testPrisma, cleanDatabase, seedTestData } from "../helpers/prisma";
 import { getTodayTaskCounts } from "@/app/_db/today-tasks";
 import { getPaymentsPage } from "@/app/_db/payments";
+import { getBookingsPage } from "@/app/_db/bookings";
 import { businessToday } from "@/app/_lib/util/business-time";
 
 const DAY = 86_400_000;
@@ -149,5 +150,46 @@ describe("getPaymentsPage status filter", () => {
 
     const all = await getPaymentsPage(1, base);
     expect(all.total).toBe(2);
+  });
+});
+
+describe("getBookingsPage checkin/expiring filters", () => {
+  const DAY = 86_400_000;
+  beforeEach(async () => {
+    await cleanDatabase();
+    await seedTestData();
+  });
+
+  it("checkin='today' returns only today's un-checked-in PENDING/ACTIVE bookings", async () => {
+    const today = businessToday();
+    const t1 = await testPrisma.tenant.create({ data: { name: "K", id_number: `k-${Date.now()}`, email: "k@t.com" } });
+    await testPrisma.booking.create({
+      data: { room_id: 1, tenant_id: t1.id, start_date: today, status_id: 2, fee: 1, is_rolling: true },
+    });
+    const t2 = await testPrisma.tenant.create({ data: { name: "L", id_number: `l-${Date.now()}`, email: "l@t.com" } });
+    const ci = await testPrisma.booking.create({
+      data: { room_id: 2, tenant_id: t2.id, start_date: today, status_id: 2, fee: 1, is_rolling: true },
+    });
+    await testPrisma.checkInOutLog.create({ data: { booking_id: ci.id, event_type: "CHECK_IN", event_date: today } });
+
+    const base = { page: 1, pageSize: 10, search: "", sortBy: null, sortDir: "desc" as const };
+    const r = await getBookingsPage(1, base, { checkin: "today" });
+    expect(r.total).toBe(1);
+  });
+
+  it("expiring=true returns only ACTIVE non-rolling bookings ending within 30 days", async () => {
+    const today = businessToday();
+    const t1 = await testPrisma.tenant.create({ data: { name: "M", id_number: `m-${Date.now()}`, email: "m@t.com" } });
+    await testPrisma.booking.create({
+      data: { room_id: 1, tenant_id: t1.id, start_date: new Date(today.getTime() - 20 * DAY), end_date: new Date(today.getTime() + 10 * DAY), status_id: 2, is_rolling: false, fee: 1 },
+    });
+    const t2 = await testPrisma.tenant.create({ data: { name: "N", id_number: `n-${Date.now()}`, email: "n@t.com" } });
+    await testPrisma.booking.create({
+      data: { room_id: 2, tenant_id: t2.id, start_date: today, status_id: 2, is_rolling: true, fee: 1 },
+    });
+
+    const base = { page: 1, pageSize: 10, search: "", sortBy: null, sortDir: "desc" as const };
+    const r = await getBookingsPage(1, base, { expiring: true });
+    expect(r.total).toBe(1);
   });
 });
