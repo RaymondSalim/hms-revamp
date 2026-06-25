@@ -9,7 +9,7 @@ test.describe("CRUD mutations update UI without manual refresh", () => {
       const tenantLink = page.locator("table tbody tr").first().locator("a").first();
       const tenantName = await tenantLink.textContent();
       await tenantLink.click();
-      await expect(page.getByRole("heading", { name: tenantName! })).toBeVisible();
+      await expect(page.getByRole("main").getByRole("heading", { name: tenantName! })).toBeVisible();
 
       // Add a note
       const noteText = `E2E test note ${Date.now()}`;
@@ -62,7 +62,7 @@ test.describe("CRUD mutations update UI without manual refresh", () => {
   test.describe("Locations CRUD", () => {
     test("creating a location shows it in the table", async ({ page }) => {
       await page.goto(ROUTES.locations);
-      await expect(page.getByRole("heading", { name: "Lokasi" })).toBeVisible();
+      await expect(page.getByRole("main").getByRole("heading", { name: "Lokasi" })).toBeVisible();
 
       const locName = `E2E Location ${Date.now()}`;
       await page.getByRole("button", { name: "+ Tambah Lokasi" }).click();
@@ -101,7 +101,7 @@ test.describe("CRUD mutations update UI without manual refresh", () => {
   test.describe("Durations CRUD", () => {
     test("creating a duration shows it in the table", async ({ page }) => {
       await page.goto(ROUTES.durations);
-      await expect(page.getByRole("heading", { name: "Durasi" })).toBeVisible();
+      await expect(page.getByRole("main").getByRole("heading", { name: "Durasi" })).toBeVisible();
 
       const durLabel = `E2E ${Date.now()}`;
       await page.getByRole("button", { name: "+ Tambah Durasi" }).click();
