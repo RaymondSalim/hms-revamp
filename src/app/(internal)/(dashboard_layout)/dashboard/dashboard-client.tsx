@@ -1,5 +1,8 @@
 "use client";
 
+import { TodayTasks } from "./today-tasks";
+import type { TodayTaskCounts } from "@/app/_db/today-tasks";
+
 export interface CheckInOutCounts {
   checkIns: number;
   checkOuts: number;
@@ -55,6 +58,7 @@ interface DashboardClientProps {
   recentPayments: RecentPayment[];
   outstandingBills: OutstandingBill[];
   upcomingEvents: UpcomingEvent[];
+  todayTasks: TodayTaskCounts;
 }
 
 function formatCurrency(amount: number) {
@@ -79,6 +83,7 @@ export function DashboardClient({
   recentPayments,
   outstandingBills,
   upcomingEvents,
+  todayTasks,
 }: DashboardClientProps) {
   return (
     <div className="space-y-6">
@@ -88,6 +93,8 @@ export function DashboardClient({
       >
         Dashboard
       </h1>
+
+      <TodayTasks counts={todayTasks} />
 
       {/* Overview Cards */}
       <div data-tour="dashboard-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

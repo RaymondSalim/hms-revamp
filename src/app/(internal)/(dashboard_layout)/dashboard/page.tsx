@@ -7,6 +7,7 @@ import {
   getOutstandingBills,
   getUpcomingEvents,
 } from "@/app/_db/dashboard";
+import { getTodayTaskCounts } from "@/app/_db/today-tasks";
 import { serializeForClient } from "@/app/_lib/util/serialize";
 import { DashboardClient, type RecentPayment, type OutstandingBill, type UpcomingEvent } from "./dashboard-client";
 import { checkPermission } from "@/app/_lib/rbac";
@@ -28,7 +29,7 @@ export default async function DashboardPage() {
   }
   const locationId = selectedLocationId;
 
-  const [checkInOutCounts, roomStats, occupancy, recentPayments, outstandingBills, upcomingEvents] =
+  const [checkInOutCounts, roomStats, occupancy, recentPayments, outstandingBills, upcomingEvents, todayTasks] =
     await Promise.all([
       getCheckInOutCounts(locationId),
       getRoomStats(locationId),
@@ -36,6 +37,7 @@ export default async function DashboardPage() {
       getRecentPayments(locationId),
       getOutstandingBills(locationId),
       getUpcomingEvents(),
+      getTodayTaskCounts(locationId),
     ]);
 
   return (
@@ -46,6 +48,7 @@ export default async function DashboardPage() {
       recentPayments={serializeForClient(recentPayments) as unknown as RecentPayment[]}
       outstandingBills={serializeForClient(outstandingBills) as unknown as OutstandingBill[]}
       upcomingEvents={serializeForClient(upcomingEvents) as unknown as UpcomingEvent[]}
+      todayTasks={todayTasks}
     />
   );
 }

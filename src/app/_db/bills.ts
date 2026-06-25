@@ -8,6 +8,16 @@ import {
   type Paginated,
 } from "@/app/_lib/util/table-params";
 
+/** Outstanding balance for a bill: Σ item amounts − Σ allocated payments. */
+export function billOutstanding(bill: {
+  bill_item: { amount: Prisma.Decimal | number | string }[];
+  paymentBills: { amount: Prisma.Decimal | number | string }[];
+}): number {
+  const items = bill.bill_item.reduce((s, i) => s + Number(i.amount), 0);
+  const paid = bill.paymentBills.reduce((s, p) => s + Number(p.amount), 0);
+  return items - paid;
+}
+
 export async function getBillsByBooking(bookingId: number) {
   return prisma.bill.findMany({
     where: { booking_id: bookingId, deletedAt: null },
