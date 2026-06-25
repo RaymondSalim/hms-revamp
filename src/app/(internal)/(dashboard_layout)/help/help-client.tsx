@@ -15,6 +15,7 @@ const sections: HelpSection[] = [
     title: "Alur Kerja Harian",
     content: [
       "1. Buka Dashboard — periksa check-in/check-out hari ini dan kamar tersedia.",
+      "Tugas Hari Ini: panel di atas Dashboard menampilkan jumlah check-in hari ini, pembayaran yang belum diverifikasi, tagihan terlambat, dan pemesanan yang akan berakhir. Klik kartu untuk membuka daftar terkait.",
       "2. Proses check-in untuk penyewa yang baru datang melalui halaman Pemesanan.",
       "3. Periksa tagihan jatuh tempo di halaman Tagihan.",
       "4. Catat pembayaran yang diterima di halaman Pembayaran.",
