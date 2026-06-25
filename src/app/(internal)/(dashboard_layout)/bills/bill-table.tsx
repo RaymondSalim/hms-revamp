@@ -426,7 +426,7 @@ export function BillTable({
         search={search}
         sortBy={sortBy}
         sortDir={sortDir}
-        sortableColumns={["due_date", "description", "invoice_number"]}
+        sortableColumns={["due_date", "description", "invoice_number", "room_tenant"]}
         searchPlaceholder="Cari tagihan..."
       />
 

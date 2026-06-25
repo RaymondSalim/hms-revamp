@@ -127,6 +127,39 @@ describe("server-side table pagination", () => {
       const otherLoc = await getBillsPage(99999, baseParams);
       expect(otherLoc.total).toBe(0);
     });
+
+    it("sorts by room_tenant (tenant name relation) asc and desc", async () => {
+      const tZ = await testPrisma.tenant.create({
+        data: { name: "Zulkifli", id_number: `id-z-${Date.now()}`, email: "z@t.com" },
+      });
+      const tA = await testPrisma.tenant.create({
+        data: { name: "Anwar", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      const bZ = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tZ.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      const bA = await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: tA.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.bill.create({
+        data: { booking_id: bZ.id, description: "Tagihan Z", due_date: new Date("2025-01-28"), invoice_number: "INV-Z" },
+      });
+      await testPrisma.bill.create({
+        data: { booking_id: bA.id, description: "Tagihan A", due_date: new Date("2025-01-28"), invoice_number: "INV-A" },
+      });
+
+      const asc = await getBillsPage(1, { ...baseParams, sortBy: "room_tenant", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.bookings?.tenants?.name)).toEqual(["Anwar", "Zulkifli"]);
+
+      const desc = await getBillsPage(1, { ...baseParams, sortBy: "room_tenant", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.bookings?.tenants?.name)).toEqual(["Zulkifli", "Anwar"]);
+    });
+
+    it("falls back to default sort (due_date) for an unknown sortBy (no throw)", async () => {
+      await seedBills(2);
+      const r = await getBillsPage(1, { ...baseParams, sortBy: "not_a_column" });
+      expect(r.total).toBe(2);
+    });
   });
 
   describe("getPaymentsPage", () => {

@@ -26,8 +26,28 @@ const billWithRelations = {
 
 export type BillWithRelations = Prisma.BillGetPayload<typeof billWithRelations>;
 
-/** Columns that can be sorted at the DB level (relation-computed totals can't). */
-export const BILL_SORT_KEYS = ["due_date", "description", "invoice_number"] as const;
+/** Columns that can be sorted at the DB level. Aggregate totals (total/paid/
+ *  outstanding) are NOT sortable here — see Tier 2 backlog. */
+export const BILL_SORT_KEYS = [
+  "due_date",
+  "description",
+  "invoice_number",
+  "room_tenant",
+] as const;
+
+function billOrderBy(
+  sortBy: string | null,
+  dir: Prisma.SortOrder
+): Prisma.BillOrderByWithRelationInput[] {
+  const map: Record<string, Prisma.BillOrderByWithRelationInput> = {
+    due_date: { due_date: dir },
+    description: { description: dir },
+    invoice_number: { invoice_number: dir },
+    room_tenant: { bookings: { tenants: { name: dir } } },
+  };
+  const primary = map[sortBy ?? "due_date"] ?? map.due_date;
+  return [primary, { id: dir }];
+}
 
 /**
  * Paginated, searchable, sortable bills for one location. Search matches
@@ -63,14 +83,15 @@ export async function getBillsPage(
       : {}),
   };
 
-  const sortKey = (params.sortBy ?? "due_date") as (typeof BILL_SORT_KEYS)[number];
-  const orderBy: Prisma.BillOrderByWithRelationInput = {
-    [sortKey]: params.sortDir,
-  };
-
   const { skip, take } = toSkipTake(params);
   const [rows, total] = await Promise.all([
-    prisma.bill.findMany({ where, ...billWithRelations, orderBy, skip, take }),
+    prisma.bill.findMany({
+      where,
+      ...billWithRelations,
+      orderBy: billOrderBy(params.sortBy, params.sortDir),
+      skip,
+      take,
+    }),
     prisma.bill.count({ where }),
   ]);
 
