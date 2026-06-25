@@ -34,15 +34,23 @@ export default async function BookingsPage({
     );
   }
 
-  const params = parseTableParams(await searchParams, {
+  const sp = await searchParams;
+  const params = parseTableParams(sp, {
     allowedSortKeys: BOOKING_SORT_KEYS,
     defaultSortBy: "createdAt",
     defaultSortDir: "desc",
   });
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const bookingFilter =
+    first(sp.checkin) === "today"
+      ? { checkin: "today" as const }
+      : first(sp.expiring) === "1"
+        ? { expiring: true }
+        : {};
 
   const [bookings, rooms, tenants, durations, addons, roomTypeDurations, bookingStatuses] =
     await Promise.all([
-      getBookingsPage(selectedLocationId, params),
+      getBookingsPage(selectedLocationId, params, bookingFilter),
       getRoomsByLocation(selectedLocationId),
       getTenants(),
       getDurations(),

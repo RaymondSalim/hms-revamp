@@ -19,6 +19,7 @@ const sections: HelpSection[] = [
       "3. Periksa tagihan jatuh tempo di halaman Tagihan.",
       "4. Catat pembayaran yang diterima di halaman Pembayaran.",
       "5. Proses check-out untuk penyewa yang selesai masa tinggalnya.",
+      "Tugas Hari Ini: panel di atas Dashboard menampilkan jumlah check-in hari ini, pembayaran yang belum diverifikasi, tagihan terlambat, dan pemesanan yang akan berakhir. Klik kartu untuk membuka daftar terkait.",
     ],
   },
   {

@@ -28,13 +28,16 @@ export default async function BillsPage({
     );
   }
 
-  const params = parseTableParams(await searchParams, {
+  const sp = await searchParams;
+  const params = parseTableParams(sp, {
     allowedSortKeys: BILL_SORT_KEYS,
     defaultSortBy: "due_date",
     defaultSortDir: "desc",
   });
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const overdue = first(sp.overdue) === "1";
 
-  const bills = await getBillsPage(selectedLocationId, params);
+  const bills = await getBillsPage(selectedLocationId, params, { overdue });
 
   return (
     <BillTable

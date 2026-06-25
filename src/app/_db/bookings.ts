@@ -2,6 +2,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { Prisma } from "@prisma/client";
 import type { LocationScope } from "@/app/_lib/util/location-scope";
 import { BOOKING_STATUS } from "@/app/_lib/util/status";
+import { businessToday } from "@/app/_lib/util/business-time";
 import {
   toSkipTake,
   buildPaginated,
@@ -67,18 +68,44 @@ function bookingOrderBy(
   return [primary, { id: dir }];
 }
 
+export interface BookingFilter {
+  checkin?: "today";
+  expiring?: boolean;
+}
+
 /**
  * Paginated, searchable, sortable bookings for one location. Search matches
  * tenant name and room number (case-insensitive).
  */
 export async function getBookingsPage(
   locationId: number,
-  params: TableParams
+  params: TableParams,
+  opts: BookingFilter = {}
 ): Promise<Paginated<BookingListRow>> {
   const search = params.search;
+
+  let filter: Prisma.BookingWhereInput = {};
+  if (opts.checkin === "today") {
+    const today = businessToday();
+    filter = {
+      start_date: today,
+      status_id: { in: [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACTIVE] },
+      checkInOutLogs: { none: { event_type: "CHECK_IN" } },
+    };
+  } else if (opts.expiring) {
+    const today = businessToday();
+    const in30 = new Date(today.getTime() + 30 * 86_400_000);
+    filter = {
+      status_id: BOOKING_STATUS.ACTIVE,
+      is_rolling: false,
+      end_date: { gte: today, lte: in30 },
+    };
+  }
+
   const where: Prisma.BookingWhereInput = {
     rooms: { location_id: locationId },
     deletedAt: null,
+    ...filter,
     ...(search
       ? {
           OR: [

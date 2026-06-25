@@ -7,6 +7,17 @@ import {
   type TableParams,
   type Paginated,
 } from "@/app/_lib/util/table-params";
+import { businessToday } from "@/app/_lib/util/business-time";
+
+/** Outstanding balance for a bill: Σ item amounts − Σ allocated payments. */
+export function billOutstanding(bill: {
+  bill_item: { amount: Prisma.Decimal | number | string }[];
+  paymentBills: { amount: Prisma.Decimal | number | string }[];
+}): number {
+  const items = bill.bill_item.reduce((s, i) => s + Number(i.amount), 0);
+  const paid = bill.paymentBills.reduce((s, p) => s + Number(p.amount), 0);
+  return items - paid;
+}
 
 export async function getBillsByBooking(bookingId: number) {
   return prisma.bill.findMany({
@@ -49,18 +60,24 @@ function billOrderBy(
   return [primary, { id: dir }];
 }
 
+export interface BillFilter {
+  overdue?: boolean;
+}
+
 /**
  * Paginated, searchable, sortable bills for one location. Search matches
  * invoice number, description, tenant name, and room number (case-insensitive).
  */
 export async function getBillsPage(
   locationId: number,
-  params: TableParams
+  params: TableParams,
+  opts: BillFilter = {}
 ): Promise<Paginated<BillWithRelations>> {
   const search = params.search;
   const where: Prisma.BillWhereInput = {
     deletedAt: null,
     bookings: { rooms: { location_id: locationId } },
+    ...(opts.overdue ? { due_date: { lt: businessToday() } } : {}),
     ...(search
       ? {
           OR: [
@@ -82,6 +99,20 @@ export async function getBillsPage(
         }
       : {}),
   };
+
+  if (opts.overdue) {
+    // Outstanding (Σitems − Σpaid) is an aggregate Prisma `where` can't express,
+    // so filter in JS and paginate the (small) past-due-unpaid subset in memory.
+    const all = await prisma.bill.findMany({
+      where,
+      ...billWithRelations,
+      orderBy: billOrderBy(params.sortBy, params.sortDir),
+    });
+    const outstanding = all.filter((b) => billOutstanding(b) > 0);
+    const { skip, take } = toSkipTake(params);
+    const rows = outstanding.slice(skip, skip + take);
+    return buildPaginated(rows, outstanding.length, params);
+  }
 
   const { skip, take } = toSkipTake(params);
   const [rows, total] = await Promise.all([
