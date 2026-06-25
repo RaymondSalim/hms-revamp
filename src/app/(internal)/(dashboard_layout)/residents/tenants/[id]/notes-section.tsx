@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { addNoteAction, deleteNoteAction } from "./notes-action";
 import { toast } from "react-toastify";
 import { useConfirm } from "@/app/_components/confirm-dialog";
+import { usePermissions } from "@/app/_context/permissions-context";
+import { DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 
 interface NoteItem {
   id: number;
@@ -35,16 +37,16 @@ function relativeTime(dateInput: string | Date): string {
 export function NotesSection({
   notes,
   tenantId,
-  canDelete,
 }: {
   notes: NoteItem[];
   tenantId: string;
-  canDelete: boolean;
 }) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const confirm = useConfirm();
   const router = useRouter();
+  const { can } = usePermissions();
+  const canDelete = can("roles.manage");
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,15 +131,15 @@ export function NotesSection({
                 <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                   {note.author.name} · <span title={new Date(note.createdAt).toLocaleString("id-ID")}>{relativeTime(note.createdAt)}</span>
                 </span>
-                {canDelete && (
-                  <button
-                    onClick={() => handleDelete(note.id)}
-                    className="text-xs px-2 py-1 rounded"
-                    style={{ color: "#DC2626" }}
-                  >
-                    Hapus
-                  </button>
-                )}
+                <button
+                  onClick={canDelete ? () => handleDelete(note.id) : undefined}
+                  disabled={!canDelete}
+                  title={canDelete ? undefined : DEFAULT_DISABLED_REASON}
+                  className="text-xs px-2 py-1 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ color: "#DC2626" }}
+                >
+                  Hapus
+                </button>
               </div>
             </div>
           ))}

@@ -6,6 +6,7 @@ import { auth } from "@/app/_lib/auth";
 import { getScopedLocationIds, pickSelectedLocationId } from "@/app/_lib/util/location-scope";
 import { getUserPermissions } from "@/app/_lib/rbac";
 import { LocationProvider } from "@/app/_context/location-context";
+import { PermissionsProvider } from "@/app/_context/permissions-context";
 import { Sidebar } from "@/app/_components/sidebar";
 import { Header } from "@/app/_components/header";
 import { SessionRefresh } from "@/app/_components/session-refresh";
@@ -37,28 +38,30 @@ export default async function DashboardLayout({
   );
 
   return (
-    <LocationProvider initialLocations={locations} initialLocationId={initialLocationId}>
-      <TourProvider>
-        <SessionRefresh />
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar
-            userName={session?.user?.name ?? "Pengguna"}
-            userRole={session?.user?.role_id === 1 ? "Admin" : "Staff"}
-            companyName={companyName}
-            companyImage={companyImage}
-            permissions={[...permissions]}
-          />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <Header />
-            <main
-              className="flex-1 overflow-y-auto p-6"
-              style={{ backgroundColor: "var(--color-bg-primary)" }}
-            >
-              {children}
-            </main>
+    <PermissionsProvider permissions={[...permissions]}>
+      <LocationProvider initialLocations={locations} initialLocationId={initialLocationId}>
+        <TourProvider>
+          <SessionRefresh />
+          <div className="flex h-screen overflow-hidden">
+            <Sidebar
+              userName={session?.user?.name ?? "Pengguna"}
+              userRole={session?.user?.role_id === 1 ? "Admin" : "Staff"}
+              companyName={companyName}
+              companyImage={companyImage}
+              permissions={[...permissions]}
+            />
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <Header />
+              <main
+                className="flex-1 overflow-y-auto p-6"
+                style={{ backgroundColor: "var(--color-bg-primary)" }}
+              >
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-      </TourProvider>
-    </LocationProvider>
+        </TourProvider>
+      </LocationProvider>
+    </PermissionsProvider>
   );
 }

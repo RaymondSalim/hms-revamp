@@ -10,6 +10,8 @@ import { upsertAddonAction, deleteAddonAction } from "./addons-action";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
+import { DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 
 interface PricingTier {
   id?: string;
@@ -37,6 +39,8 @@ interface Props {
 
 export function AddonTable({ addons, locationId }: Props) {
   const router = useRouter();
+  const { can } = usePermissions();
+  const canManage = can("addons.manage");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<AddonRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<AddonRow | null>(null);
@@ -142,8 +146,8 @@ export function AddonTable({ addons, locationId }: Props) {
       cell: ({ row }) => (
         <ActionMenu
           items={[
-            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger", disabled: !canManage },
           ]}
         />
       ),
@@ -161,7 +165,9 @@ export function AddonTable({ addons, locationId }: Props) {
         </h1>
         <button
           onClick={openCreate}
-          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-accent)" }}
         >
           + Tambah Add-on

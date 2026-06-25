@@ -7,6 +7,21 @@ export interface ActionItem {
   icon: React.ReactNode;
   onClick: () => void;
   variant?: "default" | "danger" | "success" | "warning" | "info";
+  disabled?: boolean;
+  disabledReason?: string;
+}
+
+export const DEFAULT_DISABLED_REASON = "Anda tidak memiliki izin untuk tindakan ini";
+
+/** Count-based split of action items into inline buttons vs overflow dropdown.
+ *  Disabled items count the same as enabled ones, so the layout is identical
+ *  regardless of the user's permissions (no row-to-row shift). */
+export function splitInline(
+  itemCount: number,
+  maxInline: number
+): { inline: number; overflow: number } {
+  if (itemCount <= maxInline) return { inline: itemCount, overflow: 0 };
+  return { inline: maxInline, overflow: itemCount - maxInline };
 }
 
 interface ActionMenuProps {
@@ -44,17 +59,26 @@ const variantStyles: Record<string, { color: string; bg: string; hoverBg: string
 
 function IconButton({ item }: { item: ActionItem }) {
   const style = variantStyles[item.variant ?? "default"];
+  const isDisabled = item.disabled ?? false;
   return (
     <button
-      onClick={item.onClick}
-      title={item.label}
+      onClick={isDisabled ? undefined : item.onClick}
+      disabled={isDisabled}
+      title={isDisabled ? item.disabledReason ?? DEFAULT_DISABLED_REASON : item.label}
       className="p-1.5 rounded-lg transition-colors duration-150"
-      style={{ color: style.color, backgroundColor: style.bg }}
+      style={{
+        color: style.color,
+        backgroundColor: style.bg,
+        opacity: isDisabled ? 0.4 : 1,
+        cursor: isDisabled ? "not-allowed" : "pointer",
+      }}
       onMouseEnter={(e) => {
+        if (isDisabled) return;
         e.currentTarget.style.backgroundColor = style.hoverBg;
         e.currentTarget.style.color = "white";
       }}
       onMouseLeave={(e) => {
+        if (isDisabled) return;
         e.currentTarget.style.backgroundColor = style.bg;
         e.currentTarget.style.color = style.color;
       }}
@@ -130,16 +154,25 @@ export function ActionMenu({ items, maxInline = 2 }: ActionMenuProps) {
           >
             {overflowItems.map((item, i) => {
               const style = variantStyles[item.variant ?? "default"];
+              const isDisabled = item.disabled ?? false;
               return (
                 <button
                   key={i}
+                  disabled={isDisabled}
+                  title={isDisabled ? item.disabledReason ?? DEFAULT_DISABLED_REASON : undefined}
                   onClick={() => {
+                    if (isDisabled) return;
                     setOpen(false);
                     item.onClick();
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors duration-100"
-                  style={{ color: style.color }}
+                  style={{
+                    color: style.color,
+                    opacity: isDisabled ? 0.4 : 1,
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                  }}
                   onMouseEnter={(e) => {
+                    if (isDisabled) return;
                     e.currentTarget.style.backgroundColor = style.bg;
                   }}
                   onMouseLeave={(e) => {

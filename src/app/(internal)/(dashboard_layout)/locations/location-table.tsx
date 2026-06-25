@@ -8,6 +8,8 @@ import { Modal } from "@/app/_components/modal";
 import { upsertLocationAction, deleteLocationAction } from "./location-action";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
 import { toast } from "react-toastify";
+import { usePermissions } from "@/app/_context/permissions-context";
+import { DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 
 interface LocationRow {
   id: number;
@@ -17,6 +19,8 @@ interface LocationRow {
 
 export function LocationTable({ data }: { data: LocationRow[] }) {
   const router = useRouter();
+  const { can } = usePermissions();
+  const canManage = can("locations.manage");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<LocationRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<LocationRow | null>(null);
@@ -77,8 +81,8 @@ export function LocationTable({ data }: { data: LocationRow[] }) {
       cell: ({ row }) => (
         <ActionMenu
           items={[
-            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger", disabled: !canManage },
           ]}
         />
       ),
@@ -96,7 +100,9 @@ export function LocationTable({ data }: { data: LocationRow[] }) {
         </h1>
         <button
           onClick={openCreate}
-          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-accent)" }}
         >
           + Tambah Lokasi

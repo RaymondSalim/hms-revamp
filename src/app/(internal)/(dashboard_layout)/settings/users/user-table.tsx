@@ -6,6 +6,8 @@ import { DataTable } from "@/app/_components/data-table";
 import { Modal } from "@/app/_components/modal";
 import { upsertSiteUserAction, deleteUserAction } from "./site_users-action";
 import { ActionMenu, Icons } from "@/app/_components/action-menu";
+import { usePermissions } from "@/app/_context/permissions-context";
+import { DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 
 interface SiteUser {
   id: string;
@@ -36,6 +38,8 @@ function RoleBadge({ roleId }: { roleId: number | null }) {
 }
 
 export function UserTable({ users, locations }: { users: SiteUser[]; locations: { id: number; name: string }[] }) {
+  const { can } = usePermissions();
+  const canManage = can("users.manage");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SiteUser | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<SiteUser | null>(null);
@@ -152,8 +156,8 @@ export function UserTable({ users, locations }: { users: SiteUser[]; locations: 
       cell: ({ row }) => (
         <ActionMenu
           items={[
-            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original) },
-            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger" },
+            { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage },
+            { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger", disabled: !canManage },
           ]}
         />
       ),
@@ -177,7 +181,9 @@ export function UserTable({ users, locations }: { users: SiteUser[]; locations: 
         </div>
         <button
           onClick={openCreate}
-          className="px-4 py-2.5 text-sm font-medium rounded-lg text-white transition-all duration-150"
+          disabled={!canManage}
+          title={canManage ? undefined : DEFAULT_DISABLED_REASON}
+          className="px-4 py-2.5 text-sm font-medium rounded-lg text-white transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-accent)" }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = "0.9";

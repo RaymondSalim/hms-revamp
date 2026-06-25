@@ -6,6 +6,11 @@ export const ADMIN = {
   password: "admin123",
 } as const;
 
+export const VIEWER = {
+  email: "viewer@micasasuites.com",
+  password: "staff123",
+} as const;
+
 export const ROUTES = {
   login: "/login",
   dashboard: "/dashboard",
