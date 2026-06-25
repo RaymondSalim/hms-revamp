@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { type ColumnDef } from "@tanstack/react-table";
+import { ServerDataTable } from "@/app/_components/server-data-table";
 import { Modal } from "@/app/_components/modal";
 import { SearchableSelect } from "@/app/_components/searchable-select";
 import { useConfirm } from "@/app/_components/confirm-dialog";
@@ -34,6 +36,13 @@ export interface BookingOption {
 interface Props {
   readings: MeterReadingRow[];
   bookings: BookingOption[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  search: string;
+  sortBy: string | null;
+  sortDir: "asc" | "desc";
 }
 
 const inputClass =
@@ -55,42 +64,21 @@ function bookingLabel(b: BookingOption): string {
   return parts.length ? parts.join(" - ") : `Booking #${b.id}`;
 }
 
-type SortKey = "reading_date" | "tenant_name" | "utility_type";
-type SortDir = "asc" | "desc";
-
-export function UtilityTable({ readings, bookings }: Props) {
+export function UtilityTable({
+  readings,
+  bookings,
+  total,
+  page,
+  pageSize,
+  pageCount,
+  search,
+  sortBy,
+  sortDir,
+}: Props) {
   const router = useRouter();
   const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [sortKey, setSortKey] = useState<SortKey>("reading_date");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-
-  function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  }
-
-  function sortIndicator(key: SortKey): string {
-    if (sortKey !== key) return "";
-    return sortDir === "asc" ? "↑" : "↓";
-  }
-
-  const sortedReadings = [...readings].sort((a, b) => {
-    let cmp = 0;
-    if (sortKey === "reading_date") {
-      cmp = a.reading_date.localeCompare(b.reading_date);
-    } else if (sortKey === "tenant_name") {
-      cmp = (a.tenant_name ?? "").localeCompare(b.tenant_name ?? "");
-    } else if (sortKey === "utility_type") {
-      cmp = a.utility_type.localeCompare(b.utility_type);
-    }
-    return sortDir === "asc" ? cmp : -cmp;
-  });
 
   const [bookingId, setBookingId] = useState<string>(
     bookings[0] ? String(bookings[0].id) : ""
@@ -155,6 +143,97 @@ export function UtilityTable({ readings, bookings }: Props) {
     });
   }
 
+  const columns: ColumnDef<MeterReadingRow, unknown>[] = [
+    {
+      id: "reading_date",
+      header: "Tanggal",
+      accessorFn: (row) => row.reading_date,
+      cell: ({ row }) => row.original.reading_date.slice(0, 10),
+    },
+    {
+      id: "tenant",
+      header: "Penyewa / Kamar",
+      accessorFn: (row) => `${row.tenant_name ?? "-"} / ${row.room_number ?? "-"}`,
+      cell: ({ row }) => (
+        <span>
+          {row.original.tenant_name ?? "-"}
+          {row.original.room_number ? ` / ${row.original.room_number}` : ""}
+        </span>
+      ),
+    },
+    {
+      id: "utility_type",
+      header: "Jenis",
+      accessorFn: (row) => row.utility_type,
+      cell: ({ row }) => utilityLabel(row.original.utility_type),
+    },
+    {
+      id: "previous_value",
+      header: "Sebelumnya",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="text-right">{row.original.previous_value ?? "-"}</div>
+      ),
+    },
+    {
+      id: "reading_value",
+      header: "Sekarang",
+      accessorFn: (row) => row.reading_value,
+      cell: ({ row }) => <div className="text-right">{row.original.reading_value}</div>,
+    },
+    {
+      id: "consumption",
+      header: "Pemakaian",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const consumption =
+          row.original.previous_value === null
+            ? null
+            : Math.max(0, row.original.reading_value - row.original.previous_value);
+        return <div className="text-right">{consumption ?? "-"}</div>;
+      },
+    },
+    {
+      id: "rate",
+      header: "Tarif",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="text-right">{formatCurrency(row.original.rate_per_unit)}</div>
+      ),
+    },
+    {
+      id: "amount",
+      header: "Jumlah",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const consumption =
+          row.original.previous_value === null
+            ? null
+            : Math.max(0, row.original.reading_value - row.original.previous_value);
+        const amount =
+          consumption === null ? null : Math.round(consumption * row.original.rate_per_unit);
+        return <div className="text-right">{amount === null ? "-" : formatCurrency(amount)}</div>;
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="text-right">
+          <button
+            onClick={() => handleDelete(row.original.id)}
+            disabled={isPending}
+            className="text-sm font-medium disabled:opacity-50"
+            style={{ color: "#DC2626" }}
+          >
+            Hapus
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -173,107 +252,19 @@ export function UtilityTable({ readings, bookings }: Props) {
         </button>
       </div>
 
-      <div
-        className="rounded-lg border overflow-x-auto"
-        style={{
-          backgroundColor: "var(--color-bg-card)",
-          borderColor: "var(--color-border)",
-        }}
-      >
-        <table className="w-full text-sm">
-          <thead>
-            <tr
-              className="text-left border-b"
-              style={{
-                color: "var(--color-text-secondary)",
-                backgroundColor: "var(--color-bg-card)",
-                borderColor: "var(--color-border)",
-              }}
-            >
-              <th className="px-4 py-3 font-medium cursor-pointer select-none" onClick={() => handleSort("reading_date")}>
-                Tanggal {sortIndicator("reading_date")}
-              </th>
-              <th className="px-4 py-3 font-medium cursor-pointer select-none" onClick={() => handleSort("tenant_name")}>
-                Penyewa / Kamar {sortIndicator("tenant_name")}
-              </th>
-              <th className="px-4 py-3 font-medium cursor-pointer select-none" onClick={() => handleSort("utility_type")}>
-                Jenis {sortIndicator("utility_type")}
-              </th>
-              <th className="px-4 py-3 font-medium text-right">Sebelumnya</th>
-              <th className="px-4 py-3 font-medium text-right">Sekarang</th>
-              <th className="px-4 py-3 font-medium text-right">Pemakaian</th>
-              <th className="px-4 py-3 font-medium text-right">Tarif</th>
-              <th className="px-4 py-3 font-medium text-right">Jumlah</th>
-              <th className="px-4 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedReadings.length === 0 && (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="px-4 py-8 text-center"
-                  style={{ color: "var(--color-text-secondary)" }}
-                >
-                  Belum ada pembacaan meter.
-                </td>
-              </tr>
-            )}
-            {sortedReadings.map((r) => {
-              const consumption =
-                r.previous_value === null
-                  ? null
-                  : Math.max(0, r.reading_value - r.previous_value);
-              const amount =
-                consumption === null
-                  ? null
-                  : Math.round(consumption * r.rate_per_unit);
-              return (
-                <tr
-                  key={r.id}
-                  className="border-t"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    color: "var(--color-text-primary)",
-                  }}
-                >
-                  <td className="px-4 py-3">
-                    {r.reading_date.slice(0, 10)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {r.tenant_name ?? "-"}
-                    {r.room_number ? ` / ${r.room_number}` : ""}
-                  </td>
-                  <td className="px-4 py-3">{utilityLabel(r.utility_type)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {r.previous_value ?? "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right">{r.reading_value}</td>
-                  <td className="px-4 py-3 text-right">
-                    {consumption ?? "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {formatCurrency(r.rate_per_unit)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {amount === null ? "-" : formatCurrency(amount)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(r.id)}
-                      disabled={isPending}
-                      className="text-sm font-medium disabled:opacity-50"
-                      style={{ color: "#DC2626" }}
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ServerDataTable
+        columns={columns}
+        data={readings}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        search={search}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        sortableColumns={["reading_date", "utility_type", "reading_value", "tenant"]}
+        searchPlaceholder="Cari penyewa atau kamar..."
+      />
 
       <Modal
         isOpen={isOpen}

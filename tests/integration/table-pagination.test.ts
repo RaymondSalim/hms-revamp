@@ -10,6 +10,7 @@ import { getAddonsPage } from "@/app/_db/addons";
 import { getTenantsPage } from "@/app/_db/tenant";
 import { getGuestsPage } from "@/app/_db/guests";
 import { getDepositsPage } from "@/app/_db/deposits";
+import { getUtilitiesPage } from "@/app/_db/utilities";
 import type { TableParams } from "@/app/_lib/util/table-params";
 
 const baseParams: TableParams = {
@@ -418,6 +419,70 @@ describe("server-side table pagination", () => {
       await seedDeposits();
       const asc = await getDepositsPage(1, { ...baseParams, sortBy: "tenant", sortDir: "asc" });
       expect(asc.rows.map((r) => r.booking.tenants?.name)).toEqual(["Gita", "Hadi"]);
+    });
+  });
+
+  describe("getUtilitiesPage", () => {
+    async function seedReadings() {
+      // Location 1 already exists with rooms 1 (101) and 2 (102). Add location 2 + a room.
+      await testPrisma.location.create({ data: { id: 2, name: "Loc 2", address: "Jl. Dua" } });
+      await testPrisma.room.create({
+        data: { id: 3, room_number: "201", room_type_id: 1, status_id: 1, location_id: 2 },
+      });
+      const tLoc1 = await testPrisma.tenant.create({
+        data: { name: "Indra", id_number: `id-i-${Date.now()}`, email: "i@t.com" },
+      });
+      const tLoc2 = await testPrisma.tenant.create({
+        data: { name: "Joko", id_number: `id-j-${Date.now()}`, email: "j@t.com" },
+      });
+      const bLoc1 = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tLoc1.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      const bLoc2 = await testPrisma.booking.create({
+        data: { room_id: 3, tenant_id: tLoc2.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.meterReading.create({
+        data: { booking_id: bLoc1.id, utility_type: "electricity", reading_date: new Date("2025-01-10"), reading_value: 100, rate_per_unit: 1500 },
+      });
+      await testPrisma.meterReading.create({
+        data: { booking_id: bLoc2.id, utility_type: "water", reading_date: new Date("2025-01-12"), reading_value: 50, rate_per_unit: 2000 },
+      });
+    }
+
+    it("scopes readings to the selected location (closes the cross-location leak)", async () => {
+      await seedReadings();
+      const loc1 = await getUtilitiesPage(1, baseParams);
+      expect(loc1.total).toBe(1);
+      expect(loc1.rows[0].booking.tenants?.name).toBe("Indra");
+
+      const loc2 = await getUtilitiesPage(2, baseParams);
+      expect(loc2.total).toBe(1);
+      expect(loc2.rows[0].booking.tenants?.name).toBe("Joko");
+    });
+
+    it("searches by tenant name and room number within the location", async () => {
+      await seedReadings();
+      expect((await getUtilitiesPage(1, { ...baseParams, search: "indra" })).total).toBe(1);
+      expect((await getUtilitiesPage(1, { ...baseParams, search: "101" })).total).toBe(1);
+      expect((await getUtilitiesPage(1, { ...baseParams, search: "joko" })).total).toBe(0); // other location
+    });
+
+    it("sorts by reading_value ascending and descending within the location", async () => {
+      await seedReadings();
+      // Add a second reading in location 1 to have something to order.
+      const tenant = await testPrisma.tenant.create({
+        data: { name: "Kiki", id_number: `id-k-${Date.now()}`, email: "k@t.com" },
+      });
+      const b = await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: tenant.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.meterReading.create({
+        data: { booking_id: b.id, utility_type: "electricity", reading_date: new Date("2025-01-15"), reading_value: 300, rate_per_unit: 1500 },
+      });
+      const asc = await getUtilitiesPage(1, { ...baseParams, sortBy: "reading_value", sortDir: "asc" });
+      expect(asc.rows.map((r) => Number(r.reading_value))).toEqual([100, 300]);
+      const desc = await getUtilitiesPage(1, { ...baseParams, sortBy: "reading_value", sortDir: "desc" });
+      expect(desc.rows.map((r) => Number(r.reading_value))).toEqual([300, 100]);
     });
   });
 });
