@@ -7,6 +7,7 @@ import { getPaymentsPage } from "@/app/_db/payments";
 import { getBookingsPage } from "@/app/_db/bookings";
 import { getRoomsPage } from "@/app/_db/rooms";
 import { getAddonsPage } from "@/app/_db/addons";
+import { getTenantsPage } from "@/app/_db/tenant";
 import type { TableParams } from "@/app/_lib/util/table-params";
 
 const baseParams: TableParams = {
@@ -294,6 +295,40 @@ describe("server-side table pagination", () => {
       expect(asc.rows.map((r) => r.name)).toEqual(["Laundry", "Parkir"]);
       const desc = await getAddonsPage(1, { ...baseParams, sortBy: "name", sortDir: "desc" });
       expect(desc.rows.map((r) => r.name)).toEqual(["Parkir", "Laundry"]);
+    });
+  });
+
+  describe("getTenantsPage", () => {
+    beforeEach(async () => {
+      await testPrisma.tenant.createMany({
+        data: [
+          { name: "Ahmad", id_number: "t-ahmad", email: "ahmad@x.com", phone: "0811" },
+          { name: "Bayu", id_number: "t-bayu", email: "bayu@x.com", phone: "0822" },
+          { name: "Cipto", id_number: "t-cipto", email: "cipto@x.com", phone: "0833" },
+        ],
+      });
+    });
+
+    it("paginates across the full (global) tenant set", async () => {
+      const p1 = await getTenantsPage({ ...baseParams, pageSize: 2, page: 1 });
+      expect(p1.rows).toHaveLength(2);
+      expect(p1.total).toBe(3);
+      expect(p1.pageCount).toBe(2);
+    });
+
+    it("searches by name, email, phone, and id_number", async () => {
+      expect((await getTenantsPage({ ...baseParams, search: "bayu" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "cipto@x.com" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "0811" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "t-ahmad" })).total).toBe(1);
+      expect((await getTenantsPage({ ...baseParams, search: "zzz" })).total).toBe(0);
+    });
+
+    it("sorts by name ascending and descending", async () => {
+      const asc = await getTenantsPage({ ...baseParams, sortBy: "name", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.name)).toEqual(["Ahmad", "Bayu", "Cipto"]);
+      const desc = await getTenantsPage({ ...baseParams, sortBy: "name", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.name)).toEqual(["Cipto", "Bayu", "Ahmad"]);
     });
   });
 });
