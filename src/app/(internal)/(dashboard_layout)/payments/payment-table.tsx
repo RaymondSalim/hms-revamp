@@ -416,7 +416,7 @@ export function PaymentTable({
         search={search}
         sortBy={sortBy}
         sortDir={sortDir}
-        sortableColumns={["payment_date", "amount"]}
+        sortableColumns={["payment_date", "amount", "booking", "status"]}
         searchPlaceholder="Cari pembayaran..."
       />
 

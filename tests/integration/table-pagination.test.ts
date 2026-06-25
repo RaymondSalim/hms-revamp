@@ -177,6 +177,66 @@ describe("server-side table pagination", () => {
       expect(byMethodTransfer.total).toBe(1);
       expect(byMethodTransfer.rows[0].payment_method).toBe("BANK_TRANSFER");
     });
+
+    it("sorts by booking (tenant name relation) asc and desc", async () => {
+      const tZ = await testPrisma.tenant.create({
+        data: { name: "Zulkifli", id_number: `id-z-${Date.now()}`, email: "z@t.com" },
+      });
+      const tA = await testPrisma.tenant.create({
+        data: { name: "Anwar", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      const bZ = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: tZ.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      const bA = await testPrisma.booking.create({
+        data: { room_id: 2, tenant_id: tA.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.payment.create({
+        data: { booking_id: bZ.id, amount: 100, payment_date: new Date("2025-01-05"), payment_method: "CASH" },
+      });
+      await testPrisma.payment.create({
+        data: { booking_id: bA.id, amount: 200, payment_date: new Date("2025-02-05"), payment_method: "CASH" },
+      });
+
+      const asc = await getPaymentsPage(1, { ...baseParams, sortBy: "booking", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.bookings?.tenants?.name)).toEqual(["Anwar", "Zulkifli"]);
+
+      const desc = await getPaymentsPage(1, { ...baseParams, sortBy: "booking", sortDir: "desc" });
+      expect(desc.rows.map((r) => r.bookings?.tenants?.name)).toEqual(["Zulkifli", "Anwar"]);
+    });
+
+    it("sorts by status (relation) asc", async () => {
+      const t = await testPrisma.tenant.create({
+        data: { name: "Andi", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      const b = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: t.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      // status 1 = PENDING, status 2 = VERIFIED. asc by string: PENDING < VERIFIED.
+      await testPrisma.payment.create({
+        data: { booking_id: b.id, amount: 100, payment_date: new Date("2025-01-05"), payment_method: "CASH", status_id: 2 },
+      });
+      await testPrisma.payment.create({
+        data: { booking_id: b.id, amount: 200, payment_date: new Date("2025-02-05"), payment_method: "CASH", status_id: 1 },
+      });
+
+      const asc = await getPaymentsPage(1, { ...baseParams, sortBy: "status", sortDir: "asc" });
+      expect(asc.rows.map((r) => r.paymentstatuses?.status)).toEqual(["PENDING", "VERIFIED"]);
+    });
+
+    it("falls back to default sort for an unknown sortBy (no throw)", async () => {
+      const t = await testPrisma.tenant.create({
+        data: { name: "Andi", id_number: `id-a-${Date.now()}`, email: "a@t.com" },
+      });
+      const b = await testPrisma.booking.create({
+        data: { room_id: 1, tenant_id: t.id, start_date: new Date("2025-01-01"), fee: 1, is_rolling: true },
+      });
+      await testPrisma.payment.create({
+        data: { booking_id: b.id, amount: 100, payment_date: new Date("2025-01-05"), payment_method: "CASH" },
+      });
+      const r = await getPaymentsPage(1, { ...baseParams, sortBy: "not_a_column" });
+      expect(r.total).toBe(1);
+    });
   });
 
   describe("getBookingsPage", () => {

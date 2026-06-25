@@ -20,7 +20,12 @@ export type PaymentWithRelations = Prisma.PaymentGetPayload<
   typeof paymentWithRelations
 >;
 
-export const PAYMENT_SORT_KEYS = ["payment_date", "amount"] as const;
+export const PAYMENT_SORT_KEYS = [
+  "payment_date",
+  "amount",
+  "booking",
+  "status",
+] as const;
 
 /** Map a free-text search term to a PaymentMethod enum value, if it names one. */
 function matchPaymentMethod(search: string): PaymentMethod | null {
@@ -28,6 +33,20 @@ function matchPaymentMethod(search: string): PaymentMethod | null {
   const needle = search.trim().toUpperCase().replace(/[\s-]+/g, "_");
   const match = Object.values(PaymentMethod).find((m) => m.includes(needle));
   return match ?? null;
+}
+
+function paymentOrderBy(
+  sortBy: string | null,
+  dir: Prisma.SortOrder
+): Prisma.PaymentOrderByWithRelationInput[] {
+  const map: Record<string, Prisma.PaymentOrderByWithRelationInput> = {
+    payment_date: { payment_date: dir },
+    amount: { amount: dir },
+    booking: { bookings: { tenants: { name: dir } } },
+    status: { paymentstatuses: { status: dir } },
+  };
+  const primary = map[sortBy ?? "payment_date"] ?? map.payment_date;
+  return [primary, { id: dir }];
 }
 
 /**
@@ -66,18 +85,12 @@ export async function getPaymentsPage(
       : {}),
   };
 
-  const sortKey = (params.sortBy ??
-    "payment_date") as (typeof PAYMENT_SORT_KEYS)[number];
-  const orderBy: Prisma.PaymentOrderByWithRelationInput = {
-    [sortKey]: params.sortDir,
-  };
-
   const { skip, take } = toSkipTake(params);
   const [rows, total] = await Promise.all([
     prisma.payment.findMany({
       where,
       ...paymentWithRelations,
-      orderBy,
+      orderBy: paymentOrderBy(params.sortBy, params.sortDir),
       skip,
       take,
     }),
