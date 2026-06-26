@@ -1,5 +1,4 @@
 import { prisma } from "@/app/_lib/prisma";
-import { Prisma } from "@prisma/client";
 import type { LocationScope } from "@/app/_lib/util/location-scope";
 import type { Permission } from "@/app/_lib/rbac";
 

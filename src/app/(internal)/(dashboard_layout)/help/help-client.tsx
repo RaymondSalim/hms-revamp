@@ -20,6 +20,7 @@ const sections: HelpSection[] = [
       "4. Catat pembayaran yang diterima di halaman Pembayaran.",
       "5. Proses check-out untuk penyewa yang selesai masa tinggalnya.",
       "Tugas Hari Ini: panel di atas Dashboard menampilkan jumlah check-in hari ini, pembayaran yang belum diverifikasi, tagihan terlambat, dan pemesanan yang akan berakhir. Klik kartu untuk membuka daftar terkait.",
+      "Pencarian Cepat (⌘K / Ctrl-K): tekan ⌘K (atau Ctrl-K) di mana saja untuk membuka pencarian global. Cari penyewa, pemesanan, tagihan, atau kamar di seluruh lokasi yang dapat Anda akses, lalu klik hasil untuk membukanya.",
     ],
   },
   {
