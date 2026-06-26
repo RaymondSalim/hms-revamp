@@ -274,12 +274,15 @@ function StatCard({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  // PaymentStatus values are stored uppercase (PENDING/VERIFIED/REJECTED); match
+  // on the normalized value so the pills color correctly (and stay aligned with
+  // the colors used on the payments list page).
   const colorMap: Record<string, { bg: string; text: string }> = {
-    Verified: { bg: "#DEF7EC", text: "#03543F" },
-    Pending: { bg: "#FEF3C7", text: "#92400E" },
-    Rejected: { bg: "#FDE8E8", text: "#9B1C1C" },
+    VERIFIED: { bg: "#D1FAE5", text: "#059669" },
+    PENDING: { bg: "#FEF3C7", text: "#D97706" },
+    REJECTED: { bg: "#FEE2E2", text: "#DC2626" },
   };
-  const colors = colorMap[status] ?? { bg: "#F3F4F6", text: "#374151" };
+  const colors = colorMap[status.toUpperCase()] ?? { bg: "#F3F4F6", text: "#374151" };
 
   return (
     <span
