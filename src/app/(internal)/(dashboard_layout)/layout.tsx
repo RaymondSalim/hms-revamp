@@ -11,6 +11,7 @@ import { Sidebar } from "@/app/_components/sidebar";
 import { Header } from "@/app/_components/header";
 import { SessionRefresh } from "@/app/_components/session-refresh";
 import { TourProvider } from "@/app/_components/tour/tour-provider";
+import { CommandPalette } from "@/app/_components/command-palette";
 
 export default async function DashboardLayout({
   children,
@@ -42,6 +43,7 @@ export default async function DashboardLayout({
       <LocationProvider initialLocations={locations} initialLocationId={initialLocationId}>
         <TourProvider>
           <SessionRefresh />
+          <CommandPalette />
           <div className="flex h-screen overflow-hidden">
             <Sidebar
               userName={session?.user?.name ?? "Pengguna"}
