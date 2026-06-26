@@ -32,18 +32,6 @@ export interface RecentPayment {
   paymentstatuses: { status: string } | null;
 }
 
-export interface OutstandingBill {
-  id: number;
-  description: string;
-  due_date: string;
-  bill_item: { amount: string }[];
-  paymentBills: { amount: string }[];
-  bookings: {
-    tenants: { name: string } | null;
-    rooms: { room_number: string } | null;
-  };
-}
-
 export interface UpcomingEvent {
   id: number;
   title: string;
@@ -56,7 +44,6 @@ interface DashboardClientProps {
   roomStats: RoomStats;
   occupancy: Occupancy;
   recentPayments: RecentPayment[];
-  outstandingBills: OutstandingBill[];
   upcomingEvents: UpcomingEvent[];
   todayTasks: TodayTaskCounts;
 }
@@ -81,7 +68,6 @@ export function DashboardClient({
   roomStats,
   occupancy,
   recentPayments,
-  outstandingBills,
   upcomingEvents,
   todayTasks,
 }: DashboardClientProps) {
@@ -96,50 +82,12 @@ export function DashboardClient({
 
       <TodayTasks counts={todayTasks} />
 
-      {/* Overview Cards */}
-      <div data-tour="dashboard-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Check-in Hari Ini"
-          value={checkInOutCounts.checkIns}
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Check-out Hari Ini"
-          value={checkInOutCounts.checkOuts}
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Kamar Tersedia"
-          value={roomStats.available}
-          subtitle={`dari ${roomStats.total} kamar`}
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Kamar Terisi"
-          value={roomStats.occupied}
-          subtitle={`${roomStats.maintenance} maintenance`}
-          icon={
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          }
-        />
+      {/* Occupancy — single card (was three room cards) */}
+      <div data-tour="dashboard-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           label="Tingkat Hunian"
           value={`${occupancy.rate}%`}
-          subtitle={`${occupancy.occupiedRooms} dari ${occupancy.totalRooms} kamar terisi`}
+          subtitle={`${roomStats.occupied} terisi · ${roomStats.available} tersedia · ${roomStats.maintenance} maintenance`}
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -147,6 +95,11 @@ export function DashboardClient({
           }
         />
       </div>
+
+      {/* Realized check-in/out today — passive activity line, not a stat card */}
+      <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+        Aktivitas hari ini: {checkInOutCounts.checkIns} check-in · {checkInOutCounts.checkOuts} check-out
+      </p>
 
       {/* Recent Payments */}
       <div
@@ -206,85 +159,6 @@ export function DashboardClient({
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Outstanding Bills */}
-      <div
-        className="rounded-xl border p-6"
-        style={{
-          backgroundColor: "var(--color-bg-card)",
-          borderColor: "var(--color-border)",
-          boxShadow: "var(--shadow-sm)",
-        }}
-      >
-        <h2
-          className="text-lg font-semibold mb-4"
-          style={{ color: "var(--color-text-primary)" }}
-        >
-          Tagihan Belum Lunas
-        </h2>
-        {outstandingBills.length === 0 ? (
-          <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Tidak ada tagihan belum lunas.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ color: "var(--color-text-secondary)" }}>
-                  <th className="text-left py-2 px-3 font-medium">Kamar / Penghuni</th>
-                  <th className="text-left py-2 px-3 font-medium">Deskripsi</th>
-                  <th className="text-left py-2 px-3 font-medium">Jatuh Tempo</th>
-                  <th className="text-right py-2 px-3 font-medium">Sisa Tagihan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {outstandingBills.map((bill) => {
-                  const total = bill.bill_item.reduce(
-                    (s, i) => s + Number(i.amount),
-                    0
-                  );
-                  const paid = bill.paymentBills.reduce(
-                    (s, p) => s + Number(p.amount),
-                    0
-                  );
-                  const outstanding = total - paid;
-                  return (
-                    <tr
-                      key={bill.id}
-                      className="border-t"
-                      style={{ borderColor: "var(--color-border)" }}
-                    >
-                      <td className="py-2.5 px-3" style={{ color: "var(--color-text-primary)" }}>
-                        <span className="font-medium">
-                          {bill.bookings?.rooms?.room_number ?? "-"}
-                        </span>
-                        <span
-                          className="block text-xs"
-                          style={{ color: "var(--color-text-secondary)" }}
-                        >
-                          {bill.bookings?.tenants?.name ?? "-"}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3" style={{ color: "var(--color-text-primary)" }}>
-                        {bill.description}
-                      </td>
-                      <td className="py-2.5 px-3" style={{ color: "var(--color-text-secondary)" }}>
-                        {formatDate(bill.due_date)}
-                      </td>
-                      <td
-                        className="py-2.5 px-3 text-right font-semibold"
-                        style={{ color: "#DC2626" }}
-                      >
-                        {formatCurrency(outstanding)}
-                      </td>
-                    </tr>
-                  );
-                })}
               </tbody>
             </table>
           </div>
@@ -400,12 +274,15 @@ function StatCard({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  // PaymentStatus values are stored uppercase (PENDING/VERIFIED/REJECTED); match
+  // on the normalized value so the pills color correctly (and stay aligned with
+  // the colors used on the payments list page).
   const colorMap: Record<string, { bg: string; text: string }> = {
-    Verified: { bg: "#DEF7EC", text: "#03543F" },
-    Pending: { bg: "#FEF3C7", text: "#92400E" },
-    Rejected: { bg: "#FDE8E8", text: "#9B1C1C" },
+    VERIFIED: { bg: "#D1FAE5", text: "#059669" },
+    PENDING: { bg: "#FEF3C7", text: "#D97706" },
+    REJECTED: { bg: "#FEE2E2", text: "#DC2626" },
   };
-  const colors = colorMap[status] ?? { bg: "#F3F4F6", text: "#374151" };
+  const colors = colorMap[status.toUpperCase()] ?? { bg: "#F3F4F6", text: "#374151" };
 
   return (
     <span

@@ -98,25 +98,6 @@ export async function getRecentPayments(locationId: number, limit = 5) {
   });
 }
 
-export async function getOutstandingBills(locationId: number, limit = 5) {
-  const bills = await prisma.bill.findMany({
-    where: { bookings: { rooms: { location_id: locationId } }, deletedAt: null },
-    include: {
-      bill_item: true,
-      paymentBills: true,
-      bookings: { include: { tenants: true, rooms: true } },
-    },
-    orderBy: { due_date: "asc" },
-  });
-  return bills
-    .filter((b) => {
-      const total = b.bill_item.reduce((s, i) => s + Number(i.amount), 0);
-      const paid = b.paymentBills.reduce((s, p) => s + Number(p.amount), 0);
-      return total - paid > 0;
-    })
-    .slice(0, limit);
-}
-
 export async function getUpcomingEvents(limit = 5) {
   return prisma.event.findMany({
     where: { start: { gte: new Date() } },
