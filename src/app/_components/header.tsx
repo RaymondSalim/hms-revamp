@@ -117,6 +117,18 @@ export function Header() {
 
       {/* Right side: tour button + timezone + location picker */}
       <div className="flex items-center gap-3">
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent("open-command-palette"))}
+          className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+          aria-label="Cari"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+          </svg>
+          <span>Cari…</span>
+          <kbd className="text-[10px] px-1 py-0.5 rounded border" style={{ borderColor: "var(--color-border)" }}>⌘K</kbd>
+        </button>
         <TourButton />
         <span
           data-tour="wib-clock"
