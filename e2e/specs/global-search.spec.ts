@@ -5,14 +5,14 @@ const SEEDED_TENANT = "Ahmad"; // seeded tenant: Ahmad Wijaya
 const SEEDED_INVOICE = "INV/SDK"; // seeded invoice prefix for Sudirman location
 
 test.describe("Global command-palette search", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try { window.localStorage.setItem("hms_tour_completed", "1"); } catch {}
+    });
+  });
+
   test("Cmd-K opens the palette and finds a tenant, navigating to detail", async ({ page }) => {
     await page.goto(ROUTES.dashboard);
-
-    // Dismiss onboarding tour if present
-    const closeButton = page.locator('button:has-text("×")').first();
-    if (await closeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await closeButton.click();
-    }
 
     await page.keyboard.press("Meta+k"); // chromium on the harness maps Meta
     const input = page.getByPlaceholder(/Cari penyewa/);
@@ -28,6 +28,7 @@ test.describe("Global command-palette search", () => {
 
   test("searching an invoice number drills down to the filtered bills page", async ({ page }) => {
     await page.goto(ROUTES.dashboard);
+    await page.getByRole("button", { name: /Cari/ }).waitFor({ state: "visible" });
     await page.keyboard.press("Meta+k");
     const input = page.getByPlaceholder(/Cari penyewa/);
     await input.fill(SEEDED_INVOICE);
