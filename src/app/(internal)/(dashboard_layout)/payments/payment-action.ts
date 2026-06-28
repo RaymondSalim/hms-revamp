@@ -345,6 +345,47 @@ export async function upsertPaymentAction(data: {
   return { success: true, paymentId };
 }
 
+/**
+ * Thin one-click status change for a payment (used by the dashboard action
+ * queue and the payments-table row buttons). Only mutates status_id, then
+ * reconciles derived transactions via createOrUpdatePaymentTransactions (which
+ * creates transactions only for VERIFIED and removes them otherwise). For a
+ * full edit, callers still use upsertPaymentAction.
+ */
+export async function setPaymentStatusAction(
+  paymentId: number,
+  statusId: number
+): Promise<{ success: boolean; error?: string }> {
+  const { authorized } = await checkPermission("payments.manage");
+  if (!authorized) return { success: false, error: "Unauthorized" };
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    select: { id: true, bookings: { select: { rooms: { select: { location_id: true } } } } },
+  });
+  if (!payment) return { success: false, error: "Pembayaran tidak ditemukan" };
+
+  // Location scope guard (same pattern as upsertPaymentAction).
+  const locationId = payment.bookings.rooms?.location_id;
+  const scope = await getScopedLocationIds();
+  if (scope !== null && (locationId == null || !scope.includes(locationId))) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: { status_id: statusId },
+  });
+
+  // Reconcile transactions to the new status (delete-and-recreate).
+  await createOrUpdatePaymentTransactions(paymentId);
+
+  revalidatePath("/payments");
+  revalidatePath("/dashboard");
+  await logAudit(`payment.status_changed: id=${paymentId}, status_id=${statusId}`);
+  return { success: true };
+}
+
 export async function deletePaymentAction(paymentId: number) {
   const { authorized } = await checkPermission("payments.manage");
   if (!authorized) return { success: false, error: "Unauthorized" };
