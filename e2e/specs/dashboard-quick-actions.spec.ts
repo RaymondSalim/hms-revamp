@@ -3,6 +3,10 @@ import { ROUTES } from "../fixtures/test-data";
 
 test.describe("Dashboard quick actions (Perlu Tindakan)", () => {
   test.beforeEach(async ({ page }) => {
+    // Set location to Mi Casa Sudirman (id=1), which has seeded pending data.
+    await page.context().addCookies([
+      { name: "selectedLocationId", value: "1", url: "http://localhost:3100" },
+    ]);
     await page.addInitScript(() => {
       try { window.localStorage.setItem("hms_tour_completed", "1"); } catch {}
     });
@@ -17,19 +21,6 @@ test.describe("Dashboard quick actions (Perlu Tindakan)", () => {
     await expect(page.getByText("Terjadi Kesalahan")).toHaveCount(0);
   });
 
-  test("verifying a pending payment from the queue clears it and shows a toast", async ({ page }) => {
-    await page.goto(ROUTES.dashboard);
-    const main = page.getByRole("main");
-
-    const verifyButtons = main.getByRole("button", { name: "Verifikasi" });
-    const count = await verifyButtons.count();
-    test.skip(count === 0, "No pending payment seeded in the queue");
-
-    await verifyButtons.first().click();
-    // Success toast (react-toastify).
-    await expect(page.getByText("Pembayaran diverifikasi")).toBeVisible();
-  });
-
   test("payments table shows Verifikasi for a PENDING row", async ({ page }) => {
     await page.goto(`${ROUTES.payments}?status=pending`);
     const main = page.getByRole("main");
@@ -38,11 +29,6 @@ test.describe("Dashboard quick actions (Perlu Tindakan)", () => {
     // The row ActionMenu renders Verifikasi/Tolak for pending rows. With <=2
     // inline items they render as title-bearing icon buttons; otherwise inside
     // the overflow menu. Assert at least one Verifikasi affordance is reachable.
-    // Check if there's data by looking for "Tidak ada data ditemukan" message.
-    const noDataMessage = main.getByText("Tidak ada data ditemukan");
-    const hasNoData = await noDataMessage.isVisible().catch(() => false);
-    test.skip(hasNoData, "No pending payments in the selected location");
-
     // Open the first data row's overflow if present, then look for Verifikasi.
     const verifByTitle = main.locator('button[title="Verifikasi"]');
     if (await verifByTitle.count() === 0) {
@@ -53,5 +39,15 @@ test.describe("Dashboard quick actions (Perlu Tindakan)", () => {
     await expect(
       main.getByRole("button", { name: "Verifikasi" }).or(main.locator('button[title="Verifikasi"]')).first()
     ).toBeVisible();
+  });
+
+  test("verifying a pending payment from the queue clears it and shows a toast", async ({ page }) => {
+    await page.goto(ROUTES.dashboard);
+    const main = page.getByRole("main");
+
+    const verifyButtons = main.getByRole("button", { name: "Verifikasi" });
+    await verifyButtons.first().click();
+    // Success toast (react-toastify).
+    await expect(page.getByText("Pembayaran diverifikasi")).toBeVisible();
   });
 });
