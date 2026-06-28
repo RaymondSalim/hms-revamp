@@ -1,7 +1,8 @@
 "use client";
 
 import { TodayTasks } from "./today-tasks";
-import type { TodayTaskCounts } from "@/app/_db/today-tasks";
+import { ActionQueue } from "./action-queue";
+import type { TodayTaskCounts, ActionQueue as ActionQueueData } from "@/app/_db/today-tasks";
 
 export interface CheckInOutCounts {
   checkIns: number;
@@ -46,6 +47,7 @@ interface DashboardClientProps {
   recentPayments: RecentPayment[];
   upcomingEvents: UpcomingEvent[];
   todayTasks: TodayTaskCounts;
+  actionQueue: ActionQueueData;
 }
 
 function formatCurrency(amount: number) {
@@ -70,6 +72,7 @@ export function DashboardClient({
   recentPayments,
   upcomingEvents,
   todayTasks,
+  actionQueue,
 }: DashboardClientProps) {
   return (
     <div className="space-y-6">
@@ -81,6 +84,7 @@ export function DashboardClient({
       </h1>
 
       <TodayTasks counts={todayTasks} />
+      <ActionQueue queue={actionQueue} />
 
       {/* Occupancy — single card (was three room cards) */}
       <div data-tour="dashboard-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
