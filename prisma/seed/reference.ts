@@ -59,6 +59,9 @@ export async function seedReference(prisma: PrismaClient): Promise<void> {
       // CRITICAL: This flag gates the late-fee cron. Must be "true" for derivation
       // to generate penalties on overdue bills.
       { setting_key: "LATE_FEE_AUTOMATION_ENABLED", setting_value: "true" },
+      // CRITICAL: This flag gates the booking-status-sync cron. Must be "true" for
+      // derivation to sync booking statuses based on dates.
+      { setting_key: "BOOKING_STATUS_SYNC_ENABLED", setting_value: "true" },
     ],
     skipDuplicates: true,
   });
