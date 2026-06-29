@@ -21,7 +21,7 @@ describe("anchor fixtures", () => {
     const specs = await seedAnchorFixtures(prisma, ctx);
 
     // >=2 per scenario for the key scenarios
-    for (const s of ["active", "completed", "future", "pending", "cancelled", "rolling", "overdue", "pending_payment"]) {
+    for (const s of ["active", "completed", "future", "pending", "cancelled", "rolling", "overdue", "pending_payment", "rejected", "partial"]) {
       const count = specs.filter((x) => x.scenario === s).length;
       expect(count, `scenario ${s}`).toBeGreaterThanOrEqual(2);
     }

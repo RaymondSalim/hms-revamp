@@ -380,11 +380,9 @@ export async function seedAnchorFixtures(
       }
     }
 
-    // Mark room as used if booking is active/rolling
-    if (
-      anchor.statusId === BOOKING_STATUS.ACTIVE &&
-      !anchor.isRolling
-    ) {
+    // Mark room as used if the booking is active (rolling bookings are active
+    // and occupy their room indefinitely, so they count too).
+    if (anchor.statusId === BOOKING_STATUS.ACTIVE) {
       usedRoomIds.add(roomId);
     }
 
