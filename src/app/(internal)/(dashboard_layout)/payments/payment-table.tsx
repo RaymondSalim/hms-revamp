@@ -7,11 +7,13 @@ import { Modal } from "@/app/_components/modal";
 import { FileUpload } from "@/app/_components/file-upload";
 import { formatCurrency } from "@/app/_lib/util/currency";
 import { simulateUnpaidBillPaymentAction } from "@/app/(internal)/(dashboard_layout)/bills/bill-action";
-import { upsertPaymentAction, deletePaymentAction } from "./payment-action";
+import { upsertPaymentAction, deletePaymentAction, setPaymentStatusAction } from "./payment-action";
 import { ActionMenu, Icons, DEFAULT_DISABLED_REASON } from "@/app/_components/action-menu";
 import { SearchableSelect } from "@/app/_components/searchable-select";
 import { toast } from "react-toastify";
 import { usePermissions } from "@/app/_context/permissions-context";
+import { useConfirm } from "@/app/_components/confirm-dialog";
+import { PAYMENT_STATUS } from "@/app/_lib/util/status";
 
 // --- Type Definitions ---
 
@@ -139,6 +141,24 @@ export function PaymentTable({
 
   const { can } = usePermissions();
   const canManage = can("payments.manage");
+  const confirm = useConfirm();
+
+  const handleVerify = async (row: PaymentRow) => {
+    setLoading(true);
+    const res = await setPaymentStatusAction(row.id, PAYMENT_STATUS.VERIFIED);
+    setLoading(false);
+    if (res.success) toast.success("Pembayaran diverifikasi");
+    else toast.error(res.error ?? "Gagal memverifikasi pembayaran");
+  };
+
+  const handleReject = async (row: PaymentRow) => {
+    if (!(await confirm({ message: "Tolak pembayaran ini? Tindakan ini akan menghapus transaksi terkait.", danger: true, confirmLabel: "Tolak" }))) return;
+    setLoading(true);
+    const res = await setPaymentStatusAction(row.id, PAYMENT_STATUS.REJECTED);
+    setLoading(false);
+    if (res.success) toast.success("Pembayaran ditolak");
+    else toast.error(res.error ?? "Gagal menolak pembayaran");
+  };
 
   const resetForm = () => {
     setFormBookingId("");
@@ -369,6 +389,12 @@ export function PaymentTable({
       cell: ({ row }) => (
         <ActionMenu
           items={[
+            ...(row.original.status_id === PAYMENT_STATUS.PENDING
+              ? [
+                  { label: "Verifikasi", icon: Icons.status, onClick: () => handleVerify(row.original), variant: "success" as const, disabled: !canManage },
+                  { label: "Tolak", icon: Icons.delete, onClick: () => handleReject(row.original), variant: "danger" as const, disabled: !canManage },
+                ]
+              : []),
             { label: "Edit", icon: Icons.edit, onClick: () => openEdit(row.original), disabled: !canManage },
             { label: "Hapus", icon: Icons.delete, onClick: () => setDeleteConfirm(row.original), variant: "danger", disabled: !canManage },
           ]}
