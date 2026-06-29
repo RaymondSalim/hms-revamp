@@ -44,13 +44,20 @@ export async function seedBulkBookings(
   // Generate bookings for available rooms
   const availableRooms = await prisma.room.findMany({
     where: { id: { in: ctx.roomIds } },
+    orderBy: { id: "asc" },
   });
+
+  // Reserve A3 (Kemang/location 2) for E2E create-booking.spec.ts
+  const a3Room = await prisma.room.findFirst({
+    where: { room_number: "A3", location_id: 2 },
+  });
+  const reservedRoomIds = new Set<number>(a3Room ? [a3Room.id] : []);
 
   let tenantIndex = 0;
 
   for (const room of availableRooms) {
-    // Skip if room is already used (to avoid double-booking)
-    if (usedRoomIds.has(room.id)) continue;
+    // Skip if room is reserved (A3 for E2E) or already used (to avoid double-booking)
+    if (reservedRoomIds.has(room.id) || usedRoomIds.has(room.id)) continue;
 
     // Pick a scenario
     const scenarioTuples: ReadonlyArray<readonly [string, number]> = scenarioWeights.map(
@@ -158,9 +165,6 @@ export async function seedBulkBookings(
     if (statusId === BOOKING_STATUS.ACTIVE) {
       usedRoomIds.add(room.id);
     }
-
-    // Limit bulk generation to avoid long test runs
-    if (specs.length >= 100) break;
   }
 
   return specs;

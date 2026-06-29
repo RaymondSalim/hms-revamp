@@ -352,8 +352,9 @@ export async function seedAnchorFixtures(
     }
 
     // Pick a room from ctx (avoid double-booking for active bookings)
-    // NOTE: A3 is created separately above and NOT in ctx.roomIds, so no anchor
-    // will accidentally book it.
+    // NOTE: A3 is created separately above and is explicitly excluded from bulk
+    // booking by seedBulkBookings (via reservedRoomIds). Anchor fixtures also
+    // must not book A3 — it's reserved for E2E create-booking.spec.ts.
     let roomId: number;
     let locationId: number;
 
@@ -366,6 +367,7 @@ export async function seedAnchorFixtures(
         id: { in: availableRooms },
         location_id: targetLocationId,
       },
+      orderBy: { id: "asc" },
       take: 1,
     });
 

@@ -24,7 +24,23 @@ describe("full seed pipeline", () => {
       where: { status_id: PAYMENT_STATUS.PENDING, bookings: { rooms: { location_id: 1 } } },
     })).toBeTruthy();
     expect(await prisma.penalty.count()).toBeGreaterThan(0);
-  });
+
+    // A3 (Kemang/location 2) must remain unbooked for E2E create-booking.spec
+    const a3BookingCount = await prisma.booking.count({
+      where: { rooms: { room_number: "A3", location_id: 2 } },
+    });
+    expect(a3BookingCount).toBe(0);
+
+    // Both locations must have bookings (distribution fix)
+    const loc1Bookings = await prisma.booking.count({
+      where: { rooms: { location_id: 1 } },
+    });
+    const loc2Bookings = await prisma.booking.count({
+      where: { rooms: { location_id: 2 } },
+    });
+    expect(loc1Bookings).toBeGreaterThan(0);
+    expect(loc2Bookings).toBeGreaterThan(0);
+  }, 60000); // increased timeout for large-scale seed with derive step
 
   it("is deterministic: two runs produce identical invoice numbers per booking", async () => {
     await seedAll(prisma, { tenants: 60, rngSeed: 7 });
@@ -42,5 +58,5 @@ describe("full seed pipeline", () => {
     });
 
     expect(run2).toEqual(run1);
-  });
+  }, 120000); // increased timeout for two full seeding runs with derive step
 });

@@ -97,8 +97,8 @@ export default async function globalSetup(): Promise<void> {
   // 2. Start from a clean slate so re-runs don't duplicate seed rows.
   await truncateAll();
 
-  // 3. Seed base data (admin user, RBAC, settings) then mock data.
-  execSync("npx tsx prisma/seed.ts", { env, cwd: ROOT, stdio: "inherit" });
+  // 3. Seed all data (seedAll runs seedReference for admin/RBAC/settings, then
+  // seedDynamic for large-scale mock data).
   execSync("npx tsx prisma/seed/index.ts", { env, cwd: ROOT, stdio: "inherit" });
 
   // 4. Sync auto-increment sequences to max existing id (seeds use explicit ids).
