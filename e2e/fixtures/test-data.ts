@@ -1,4 +1,4 @@
-// Known values the E2E database is seeded with (prisma/seed.ts + seed-mock.ts).
+// Known values the E2E database is seeded with (prisma/seed.ts + prisma/seed/index.ts).
 // Specs assert against these. If the seed scripts change, update here.
 
 export const ADMIN = {

@@ -99,7 +99,7 @@ export default async function globalSetup(): Promise<void> {
 
   // 3. Seed base data (admin user, RBAC, settings) then mock data.
   execSync("npx tsx prisma/seed.ts", { env, cwd: ROOT, stdio: "inherit" });
-  execSync("npx tsx prisma/seed-mock.ts", { env, cwd: ROOT, stdio: "inherit" });
+  execSync("npx tsx prisma/seed/index.ts", { env, cwd: ROOT, stdio: "inherit" });
 
   // 4. Sync auto-increment sequences to max existing id (seeds use explicit ids).
   await syncSequences();
