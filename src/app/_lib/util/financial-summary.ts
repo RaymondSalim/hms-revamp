@@ -1,4 +1,5 @@
 import type { Decimal } from "@prisma/client/runtime/library";
+import { now as clockNow } from "@/app/_lib/util/clock";
 
 interface BillForSummary {
   bill_item: { amount: Decimal }[];
@@ -20,7 +21,7 @@ export interface FinancialSummary {
 }
 
 export function computeFinancialSummary(bookings: BookingForSummary[]): FinancialSummary {
-  const now = new Date();
+  const now = clockNow();
   now.setHours(0, 0, 0, 0);
 
   let outstanding = 0;
