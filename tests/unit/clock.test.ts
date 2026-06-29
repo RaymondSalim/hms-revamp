@@ -70,6 +70,26 @@ describe("clock.now / preview-clock gates", () => {
     expect(isPreviewClockAllowed()).toBe(false);
   });
 
+  it("ALLOWS on Vercel preview", () => {
+    vi.stubEnv("PREVIEW_NOW", "2026-06-15T03:00:00Z");
+    vi.stubEnv("NODE_ENV", "production"); // Vercel sets NODE_ENV=production on every deploy
+    vi.stubEnv("VERCEL_ENV", "preview");
+    expect(isPreviewClockAllowed()).toBe(true);
+    expect(now().toISOString()).toBe("2026-06-15T03:00:00.000Z");
+  });
+
+  it("REFUSES in a bare/unknown environment (default-deny) without opt-in", () => {
+    // No VERCEL_ENV, no NODE_ENV signal, no opt-in: a self-hosted box that never
+    // set NODE_ENV must NOT freeze even if PREVIEW_NOW leaked.
+    vi.stubEnv("PREVIEW_NOW", "2026-06-15T03:00:00Z");
+    vi.stubEnv("NODE_ENV", undefined);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(isPreviewClockAllowed()).toBe(false);
+    expect(isPreviewClockEnabled()).toBe(false);
+    const before = Date.now();
+    expect(now().getTime()).toBeGreaterThanOrEqual(before);
+  });
+
   it("falls back to real time + logs on an unparseable PREVIEW_NOW", () => {
     vi.stubEnv("PREVIEW_NOW", "not-a-date");
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});

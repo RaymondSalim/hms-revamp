@@ -2,17 +2,31 @@
 // returns a FROZEN instant only when PREVIEW_NOW is set in a non-production
 // environment. MUST NOT import from business-time.ts (avoid a cycle).
 
-/** True only when freezing the clock is permitted in this environment. */
+/**
+ * True only when freezing the clock is permitted in this environment.
+ *
+ * Default-deny: an unknown/bare environment (e.g. a self-hosted box that never
+ * set NODE_ENV) is treated as production-like and REFUSED, so a leaked
+ * PREVIEW_NOW cannot accidentally freeze it. Freezing requires either an
+ * explicit opt-in or an affirmative non-production signal.
+ */
 export function isPreviewClockAllowed(): boolean {
-  // Hard refusal in production. Vercel production blocks unconditionally; a
-  // generic prod box (NODE_ENV=production, e.g. Docker/VPS) blocks unless an
-  // explicit staging opt-in is set in tandem — a real production config would
-  // never set PREVIEW_CLOCK_ENABLED.
+  // 1. Vercel production: hard block, unconditional — not even the opt-in
+  //    can override it.
   if (process.env.VERCEL_ENV === "production") return false;
-  if (process.env.NODE_ENV === "production" && process.env.PREVIEW_CLOCK_ENABLED !== "true") {
-    return false;
+  // 2. Explicit opt-in allows any remaining environment (e.g. a staging box
+  //    that runs NODE_ENV=production deliberately). A real production config
+  //    would never set this.
+  if (process.env.PREVIEW_CLOCK_ENABLED === "true") return true;
+  // 3. Otherwise require an affirmative non-production signal. Anything else
+  //    (NODE_ENV=production, or an unset/unknown environment) is refused.
+  if (process.env.VERCEL_ENV === "preview" || process.env.VERCEL_ENV === "development") {
+    return true;
   }
-  return true;
+  if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
+    return true;
+  }
+  return false;
 }
 
 /** Parsed PREVIEW_NOW epoch ms, or NaN when unset/unparseable. */

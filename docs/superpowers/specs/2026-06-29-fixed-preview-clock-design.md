@@ -157,11 +157,17 @@ export function now(): Date {
 
 1. **Env-presence gate** — inert unless `PREVIEW_NOW` is explicitly set;
    production never sets it.
-2. **Hard production refusal** (`isPreviewClockAllowed`) — `VERCEL_ENV ===
-   "production"` blocks unconditionally; `NODE_ENV === "production"` blocks
-   unless `PREVIEW_CLOCK_ENABLED === "true"` is *also* set (so a staging box
-   running `NODE_ENV=production` can opt in deliberately, but no production
-   config would).
+2. **Default-deny production refusal** (`isPreviewClockAllowed`) — freezing is
+   refused unless the environment affirmatively proves it is non-production:
+   (a) `VERCEL_ENV === "production"` blocks unconditionally (not even the opt-in
+   overrides it); (b) `PREVIEW_CLOCK_ENABLED === "true"` allows any remaining
+   env (deliberate staging opt-in, e.g. a box running `NODE_ENV=production`);
+   (c) otherwise require an affirmative non-prod signal — `VERCEL_ENV` of
+   `preview`/`development`, or `NODE_ENV` of `development`/`test`. Anything else,
+   including an **unset/unknown** environment (a self-hosted box that never set
+   `NODE_ENV`), is treated as production-like and **refused** — so a leaked
+   `PREVIEW_NOW` cannot accidentally freeze a bare prod box. (Hardened from the
+   original "block known-prod" model per final-review Minor #1.)
 3. **Loud failure, never silent** — a set-but-refused or unparseable
    `PREVIEW_NOW` logs `console.error` and falls back to real time, so a leaked
    misconfig is visible in logs rather than silently freezing prod.
