@@ -1,6 +1,7 @@
 import { prisma } from "@/app/_lib/prisma";
 import { businessToday } from "@/app/_lib/util/business-time";
 import { BOOKING_STATUS } from "@/app/_lib/util/status";
+import { now } from "@/app/_lib/util/clock";
 
 export async function getCheckInOutCounts(locationId: number) {
   // event_date is a @db.Date at midnight UTC; compare against the business
@@ -100,7 +101,7 @@ export async function getRecentPayments(locationId: number, limit = 5) {
 
 export async function getUpcomingEvents(limit = 5) {
   return prisma.event.findMany({
-    where: { start: { gte: new Date() } },
+    where: { start: { gte: now() } },
     orderBy: { start: "asc" },
     take: limit,
   });

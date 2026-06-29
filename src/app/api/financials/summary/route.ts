@@ -3,6 +3,7 @@ import { getGroupedIncomeExpense } from "@/app/_db/dashboard";
 import { serializeForClient } from "@/app/_lib/util/serialize";
 import { checkPermission } from "@/app/_lib/rbac";
 import { assertLocationAccess } from "@/app/_lib/util/location-scope";
+import { now } from "@/app/_lib/util/clock";
 
 export async function GET(request: NextRequest) {
   const { authorized } = await checkPermission("financials.view");
@@ -19,8 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const startDate = new Date(searchParams.get("startDate") ?? new Date().toISOString());
-  const endDate = new Date(searchParams.get("endDate") ?? new Date().toISOString());
+  const startDate = new Date(searchParams.get("startDate") ?? now().toISOString());
+  const endDate = new Date(searchParams.get("endDate") ?? now().toISOString());
   const splitDeposit = searchParams.get("splitDeposit") === "true";
 
   const result = await getGroupedIncomeExpense({
