@@ -10,7 +10,7 @@
     "prisma-gen": "prisma generate",
     "prisma-migrate": "prisma migrate deploy",
     "prisma-seed": "tsx prisma/seed.ts",
-    "seed:mock": "tsx prisma/seed-mock.ts",
+    "seed:mock": "tsx prisma/seed/index.ts",
     "seed:permissions": "tsx prisma/seed-permissions.ts",
     "db:push": "prisma db push",
     "db:setup": "prisma migrate deploy && tsx prisma/seed.ts",
