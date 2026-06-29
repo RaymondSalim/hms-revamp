@@ -32,6 +32,10 @@ describe("anchor fixtures", () => {
     const a3 = await prisma.room.findFirst({ where: { room_number: "A3", location_id: 2 } });
     expect(a3).toBeTruthy();
 
+    // A3 must be FREE (no bookings) for create-booking.spec.ts
+    const a3BookingCount = await prisma.booking.count({ where: { room_id: a3!.id } });
+    expect(a3BookingCount, "room A3 should have no bookings").toBe(0);
+
     // both locations represented among anchor bookings
     expect(new Set(specs.map((s) => s.locationId))).toEqual(new Set([1, 2]));
 

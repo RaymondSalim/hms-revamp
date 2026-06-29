@@ -48,6 +48,31 @@ export async function seedAnchorFixtures(
   ctx: SeedLocationsResult
 ): Promise<BookingSpec[]> {
   // ═══════════════════════════════════════════════════════════════════════
+  // E2E Requirement: Room A3 in Kemang (location 2) must be FREE
+  // ═══════════════════════════════════════════════════════════════════════
+  // create-booking.spec.ts expects room A3 to exist with no booking so it can
+  // book Ahmad Wijaya into it. Create A3 explicitly here, do NOT attach any booking.
+  let a3Room = await prisma.room.findFirst({
+    where: { room_number: "A3", location_id: 2 },
+  });
+  if (!a3Room) {
+    a3Room = await prisma.room.create({
+      data: {
+        room_number: "A3",
+        location_id: 2,
+        room_type_id: ctx.roomTypeIds[0], // Studio
+        status_id: 1, // AVAILABLE
+      },
+    });
+  } else {
+    // Ensure it's AVAILABLE in case of re-seeding
+    await prisma.room.update({
+      where: { id: a3Room.id },
+      data: { status_id: 1 },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   // Anchor Matrix: ≥2 per scenario
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -71,7 +96,7 @@ export async function seedAnchorFixtures(
       checkedIn: true,
       locationId: 2,
       tenantName: "Ahmad Wijaya",
-      roomNumber: "A3",
+      // roomNumber removed: Ahmad gets a normal room so A3 stays free for E2E
     },
     {
       scenario: "active",
@@ -326,58 +351,34 @@ export async function seedAnchorFixtures(
       tenantId = spareTenant.id;
     }
 
-    // Find or create room
+    // Pick a room from ctx (avoid double-booking for active bookings)
+    // NOTE: A3 is created separately above and NOT in ctx.roomIds, so no anchor
+    // will accidentally book it.
     let roomId: number;
     let locationId: number;
 
-    if (anchor.roomNumber === "A3" && anchor.locationId === 2) {
-      // Ensure room A3 exists in Kemang (location 2)
-      const a3 = await prisma.room.findFirst({
-        where: { room_number: "A3", location_id: 2 },
-      });
+    const targetLocationId = anchor.locationId ?? ctx.locationIds[0];
+    const availableRooms = ctx.roomIds.filter((id) => !usedRoomIds.has(id));
 
-      if (!a3) {
-        // Create it if it doesn't exist
-        const roomTypeId = ctx.roomTypeIds[0]; // Studio
-        const created = await prisma.room.create({
-          data: {
-            room_number: "A3",
-            location_id: 2,
-            room_type_id: roomTypeId,
-            status_id: 1, // Available
-          },
-        });
-        roomId = created.id;
-        locationId = 2;
-      } else {
-        roomId = a3.id;
-        locationId = a3.location_id ?? 2;
-      }
+    // Get location for the room
+    const roomCandidates = await prisma.room.findMany({
+      where: {
+        id: { in: availableRooms },
+        location_id: targetLocationId,
+      },
+      take: 1,
+    });
+
+    if (roomCandidates.length === 0) {
+      // Fallback to any available room if location-specific unavailable
+      const fallback = await prisma.room.findFirst({
+        where: { id: { in: availableRooms } },
+      });
+      roomId = fallback!.id;
+      locationId = fallback!.location_id ?? ctx.locationIds[0];
     } else {
-      // Pick a room from ctx (avoid double-booking for active bookings)
-      const targetLocationId = anchor.locationId ?? ctx.locationIds[0];
-      const availableRooms = ctx.roomIds.filter((id) => !usedRoomIds.has(id));
-
-      // Get location for the room
-      const roomCandidates = await prisma.room.findMany({
-        where: {
-          id: { in: availableRooms },
-          location_id: targetLocationId,
-        },
-        take: 1,
-      });
-
-      if (roomCandidates.length === 0) {
-        // Fallback to any available room if location-specific unavailable
-        const fallback = await prisma.room.findFirst({
-          where: { id: { in: availableRooms } },
-        });
-        roomId = fallback!.id;
-        locationId = fallback!.location_id ?? ctx.locationIds[0];
-      } else {
-        roomId = roomCandidates[0].id;
-        locationId = roomCandidates[0].location_id ?? targetLocationId;
-      }
+      roomId = roomCandidates[0].id;
+      locationId = roomCandidates[0].location_id ?? targetLocationId;
     }
 
     // Mark room as used if the booking is active (rolling bookings are active
