@@ -637,6 +637,7 @@ export async function checkInOutAction(data: {
 
     await logAudit(`booking.${data.event_type.toLowerCase()}: id=${data.booking_id}, date=${new Date(data.event_date).toISOString().split("T")[0]}${data.deposit_status ? `, deposit=${data.deposit_status}` : ""}`);
     revalidatePath("/bookings");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (e: unknown) {
     captureException(e, { message: "Check in/out error" });

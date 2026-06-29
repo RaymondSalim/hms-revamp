@@ -46,6 +46,7 @@ test.describe("Dashboard quick actions (Perlu Tindakan)", () => {
     const main = page.getByRole("main");
 
     const verifyButtons = main.getByRole("button", { name: "Verifikasi" });
+    await expect(verifyButtons.first()).toBeVisible();   // pending payment present in Sudirman (selectedLocationId=1)
     await verifyButtons.first().click();
     // Success toast (react-toastify).
     await expect(page.getByText("Pembayaran diverifikasi")).toBeVisible();
