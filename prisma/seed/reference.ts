@@ -78,7 +78,7 @@ export async function seedReference(prisma: PrismaClient): Promise<void> {
     data: {
       location_id: null,
       booking_id: null,
-      late_fee_type: "FIXED",
+      late_fee_type: "flat",
       late_fee_amount: 200000,
       grace_period_days: 7,
       billing_cycle_day: 1,

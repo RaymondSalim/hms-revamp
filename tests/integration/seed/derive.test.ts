@@ -52,9 +52,10 @@ describe("real-logic derivation", () => {
     });
     expect(txns.length).toBeGreaterThan(0);
 
-    // Verify runLateFees ran successfully (penalties may or may not be created
-    // depending on specific booking dates and grace periods). The core contract is
-    // that the cron executes without error - penalty logic is tested separately.
-    // Just ensure no errors were thrown above.
+    // The late-fee cron replay (runLateFees) must create penalties for the
+    // overdue anchors (past-due bills with outstanding > 0, flat/percentage
+    // policy). This is the spec's coverage guarantee.
+    const penalties = await prisma.penalty.count();
+    expect(penalties).toBeGreaterThan(0);
   });
 });

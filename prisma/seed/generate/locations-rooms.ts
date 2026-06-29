@@ -131,7 +131,7 @@ export async function seedLocationsRoomsTypes(
   await prisma.billingPolicy.create({
     data: {
       location_id: loc1.id,
-      late_fee_type: "FIXED",
+      late_fee_type: "flat",
       late_fee_amount: 200000,
       grace_period_days: 7,
       billing_cycle_day: 1,
@@ -144,7 +144,7 @@ export async function seedLocationsRoomsTypes(
   await prisma.billingPolicy.create({
     data: {
       location_id: loc2.id,
-      late_fee_type: "PERCENTAGE",
+      late_fee_type: "percentage",
       late_fee_amount: 5.0,
       grace_period_days: 5,
       billing_cycle_day: 1,
