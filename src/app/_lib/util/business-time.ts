@@ -17,11 +17,13 @@
 // calendar math is done in UTC space so results are independent of the host
 // timezone.
 
+import { now as clockNow } from "@/app/_lib/util/clock";
+
 export const BUSINESS_UTC_OFFSET_HOURS = 7; // WIB (Asia/Jakarta), fixed, no DST.
 
 // The current business calendar day, as a midnight-UTC Date matching @db.Date
 // storage. `now` is injectable for testing.
-export function businessToday(now: Date = new Date()): Date {
+export function businessToday(now: Date = clockNow()): Date {
   const shifted = new Date(now.getTime() + BUSINESS_UTC_OFFSET_HOURS * 3_600_000);
   return new Date(
     Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate())

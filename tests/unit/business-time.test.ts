@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   businessToday,
   startOfUtcDay,
@@ -29,6 +29,16 @@ describe("businessToday", () => {
     // 2026-06-30T20:00Z is 2026-07-01 03:00 WIB → July 1 in business time.
     const now = new Date("2026-06-30T20:00:00Z");
     expect(businessToday(now).toISOString()).toBe("2026-07-01T00:00:00.000Z");
+  });
+
+  it("argless businessToday() reflects a frozen PREVIEW_NOW", () => {
+    vi.stubEnv("PREVIEW_NOW", "2026-06-15T03:00:00Z"); // 10:00 WIB → business day 2026-06-15
+    try {
+      // 03:00Z + 7h = 10:00 WIB on the 15th.
+      expect(businessToday().toISOString()).toBe("2026-06-15T00:00:00.000Z");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
