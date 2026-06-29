@@ -10,6 +10,7 @@ import { PermissionsProvider } from "@/app/_context/permissions-context";
 import { Sidebar } from "@/app/_components/sidebar";
 import { Header } from "@/app/_components/header";
 import { SessionRefresh } from "@/app/_components/session-refresh";
+import { PreviewClockBanner } from "@/app/_components/preview-clock-banner";
 import { TourProvider } from "@/app/_components/tour/tour-provider";
 import { CommandPalette } from "@/app/_components/command-palette";
 
@@ -53,6 +54,7 @@ export default async function DashboardLayout({
               permissions={[...permissions]}
             />
             <div className="flex flex-1 flex-col overflow-hidden">
+              <PreviewClockBanner />
               <Header />
               <main
                 className="flex-1 overflow-y-auto p-6"
