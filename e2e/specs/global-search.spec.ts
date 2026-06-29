@@ -14,6 +14,14 @@ test.describe("Global command-palette search", () => {
   test("Cmd-K opens the palette and finds a tenant, navigating to detail", async ({ page }) => {
     await page.goto(ROUTES.dashboard);
 
+    // Wait for client hydration before the keyboard shortcut: the CommandPalette
+    // attaches its keydown listener in a useEffect, so pressing ⌘K before hydration
+    // is a no-op. The header "Cari" trigger is a client component rendered by the
+    // same hydration pass, so its visibility is a reliable readiness proxy. (The
+    // sibling invoice test already does this; the heavier dashboard under the
+    // large-scale seed made the race observable here too.)
+    await page.getByRole("button", { name: /Cari/ }).waitFor({ state: "visible" });
+
     await page.keyboard.press("Meta+k"); // chromium on the harness maps Meta
     const input = page.getByPlaceholder(/Cari penyewa/);
     await expect(input).toBeVisible();
