@@ -32,6 +32,33 @@ describe("bulk generators", () => {
     expect(first?.name).toBeTruthy();
   });
 
+  it("returns tenant ids in deterministic creation order", async () => {
+    // First run
+    await truncateAll(prisma);
+    await seedReference(prisma);
+    await seedLocationsRoomsTypes(prisma, makeRng(1));
+    const idsRun1 = await seedTenants(prisma, makeRng(42), 30);
+    const tenantsRun1 = await prisma.tenant.findMany({
+      where: { id: { in: idsRun1 } },
+      select: { id: true, name: true },
+    });
+    const namesRun1 = idsRun1.map((id) => tenantsRun1.find((t) => t.id === id)!.name);
+
+    // Second run with same seed
+    await truncateAll(prisma);
+    await seedReference(prisma);
+    await seedLocationsRoomsTypes(prisma, makeRng(1));
+    const idsRun2 = await seedTenants(prisma, makeRng(42), 30);
+    const tenantsRun2 = await prisma.tenant.findMany({
+      where: { id: { in: idsRun2 } },
+      select: { id: true, name: true },
+    });
+    const namesRun2 = idsRun2.map((id) => tenantsRun2.find((t) => t.id === id)!.name);
+
+    // Names in returned-id order must be identical
+    expect(namesRun1).toEqual(namesRun2);
+  });
+
   it("creates the 5 login users with correct roles", async () => {
     await seedLocationsRoomsTypes(prisma, makeRng(1));
     const admin = await prisma.siteUser.findUnique({ where: { email: "admin@micasasuites.com" } });

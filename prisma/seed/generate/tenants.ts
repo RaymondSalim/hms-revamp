@@ -97,17 +97,12 @@ export async function seedTenants(
     tenantsData.push(tenant);
   }
 
-  // Batch create
-  await prisma.tenant.createMany({
-    data: tenantsData,
-  });
+  // Sequential create to preserve deterministic order
+  const ids: string[] = [];
+  for (const data of tenantsData) {
+    const t = await prisma.tenant.create({ data, select: { id: true } });
+    ids.push(t.id);
+  }
 
-  // Query back to get the created CUIDs (ordered by id which corresponds to creation order)
-  const created = await prisma.tenant.findMany({
-    select: { id: true },
-    orderBy: { id: "asc" },
-    take: count,
-  });
-
-  return created.map((t) => t.id);
+  return ids;
 }
